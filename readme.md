@@ -121,7 +121,7 @@ This pipeline performs end-to-end OCR by first detecting text lines using Surya 
 ![Inference Pipeline](./assets/inference-pipeline.jpg)
 
 ### 1. Prerequisites
-You need to install Surya directly from its GitHub repository to ensure you have the latest detection features, along with other dependencies:
+You need to install Surya directly from its GitHub repository to ensure you have the latest detection features, or you just clone our repostiory which already contain surya:
 ```bash
 # Install Surya from GitHub
 git clone https://github.com/datalab-to/surya.git
