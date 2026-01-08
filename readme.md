@@ -23,7 +23,7 @@ We generated **200,000 synthetic images** to ensure robustness against font vari
 | **Document Text** | 100,000 | Pillow + Khmer Corpus | Erosion, noise, thinning/thickening, perspective distortion. |
 | **Scene Text** | 100,000 | SynthTIGER + Stanford BG | Rotation, blur, noise, realistic backgrounds. |
 
-### Evaluation Data (Real-World)
+### Evaluation Data (Real-World + Synthetic)
 | Dataset | Type | Size | Description |
 | :--- | :--- | :--- | :--- |
 | **KHOB** | Real | 325 | Standard benchmark, clean backgrounds but compression artifacts. |
