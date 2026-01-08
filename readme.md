@@ -164,5 +164,8 @@ In order to automatically convert an image directly to PDF file while preserving
 ```bash
 python inference_pdf.py
 ```
-Below is the result of the editable PDF with layout preservation after OCR:
-![Inference PDF](./assets/pdf_convert.png)
+Below is the original document image and the result of the editable PDF with layout preservation after OCR:
+<p float="left">
+  <img src="khmer_document_4.jpg" width="40%" />
+  <img src="./assets/pdf_convert.png" width="45%" /> 
+</p>
