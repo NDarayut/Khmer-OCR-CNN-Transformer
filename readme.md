@@ -128,7 +128,7 @@ git clone https://github.com/datalab-to/surya.git
 ```
 
 ### 2. How to Run
-To run the OCR on an image, simply execute the script:
+To run the OCR on an image, and get result in the form of a text file, simply execute the script:
 ```bash
 python inference.py
 ```
@@ -158,3 +158,11 @@ if __name__ == "__main__":
     Line 6: បង្កើតឲ្យបាន។
     """
 ```
+
+### End-to-End Image to Edtiable PDF
+In order to automatically convert an image directly to PDF file while preserving the layout structure, execute the script below:
+```bash
+python inference_pdf.py
+```
+Below is the result of the editable PDF with layout preservation after OCR:
+![Inference PDF](./assets/pdf_convert.png)
