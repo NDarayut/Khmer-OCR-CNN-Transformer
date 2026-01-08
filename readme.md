@@ -13,7 +13,9 @@ Khmer script presents unique challenges for OCR due to its large character set, 
 
 ## Datasets
 
-The model was trained entirely on synthetic data and evaluated on real-world datasets.
+The model was trained entirely on synthetic data and evaluated on real-world datasets. 
+
+You can access the full training datasets on **Hugging Face**: [![Hugging Face Datasets](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Datasets-blue)](https://huggingface.co/collections/Darayut/khmer-text-synthetic)
 
 ### Training Data (Synthetic)
 We generated **200,000 synthetic images** to ensure robustness against font variations and background noise.
