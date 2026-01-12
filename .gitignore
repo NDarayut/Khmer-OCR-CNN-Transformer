@@ -133,3 +133,12 @@ clean_train_log.py
 generate.py 
 handwritting.py 
 inference_test.py
+recognize_test.py
+test_image_2.png 
+test_image_3.png
+docx_convert.py
+clean_resnet.txt
+clean_vgg.txt 
+test_image_2.txt 
+test_image_3.txt 
+loss_curves.png 
