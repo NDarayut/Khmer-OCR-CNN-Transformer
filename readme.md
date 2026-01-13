@@ -1,15 +1,16 @@
-# A Holistic Approach to Khmer Optical Character Recognition Using an Efficient Hybrid CNN-Transformer Model
+# A Holistic Approach to Khmer Optical Character Recognition Using a Sequence-Aware Hybrid CRNN-Transformer
 
-This repository contains the implementation, dataset generation scripts, and evaluation results for a high-performance Khmer Optical Character Recognition (OCR) system. The model utilizes a hybrid architecture combining Convolutional Neural Networks (CNN) for feature extraction and Transformers for sequence modeling, specifically designed to handle the complexity and length of Khmer script.
+This repository contains the implementation, dataset generation scripts, and evaluation results for the **SeqSE-CRNN-Transformer**, a high-performance Khmer Optical Character Recognition (OCR) system. The model utilizes a hybrid architecture combining **Sequence-Aware Squeeze-and-Excitation (1D-SE)** blocks for feature extraction and **BiLSTM smoothing** for robust sequence modeling, specifically designed to handle the complexity and length of Khmer script.
 
 ## Project Overview
 
-Khmer script presents unique challenges for OCR due to its large character set, complex stacking, and variable text line lengths. This project proposes an efficient pipeline that:
-1.  **Chunks** long text lines into manageable segments.
-2.  **Extracts features** using a modified VGG (or ResNet) backbone.
-3.  **Encodes** spatial features using a Transformer Encoder.
-4.  **Merges** context across chunks.
-5.  **Decodes** the final sequence using a Transformer Decoder.
+Khmer script presents unique challenges for OCR due to its large character set, complex sub-consonant stacking, and variable text line lengths. This project proposes an enhanced pipeline that:
+1.  **Chunks** long text lines into manageable overlapping segments.
+2.  **Extracts Features** using a **Sequence-Aware CNN** (VGG + 1D-SE) that preserves horizontal spatial information.
+3.  **Encodes** local spatial features using a Transformer Encoder.
+4.  **Merges** the encoded chunks into a unified sequence.
+5.  **Smooths Context** using a **BiLSTM** layer to resolve boundary discontinuities between chunks.
+6.  **Decodes** the final sequence using a Transformer Decoder.
 
 ## Datasets
 
@@ -38,20 +39,37 @@ We generated **200,000 synthetic images** to ensure robustness against font vari
 ## Methodology & Architecture
 
 ### 1. Preprocessing: Chunking & Merging
-To handle variable-length text lines without aggressive resizing:
-*   **Padding:** Images are padded to be divisible by 100 width.
-*   **Chunking:** Split into overlapping chunks (Size: 48x100 px, Overlap: 16 px).
-*   **Merging:** Features are processed per chunk and merged before the decoding stage to preserve context.
+To handle variable-length text lines without aggressive resizing, we employ a "Chunk-and-Merge" strategy:
+*   **Resize:** Input images are resized to a fixed height of 48 pixels while maintaining aspect ratio.
+*   **Chunking:** The image is split into overlapping chunks (Size: 48x100 px, Overlap: 16 px).
+*   **Independent Encoding:** Each chunk is processed independently by the CNN and Transformer Encoder to allow for parallel batch processing.
 
-### 2. Model Architecture
-The model consists of five key modules:
-1.  **CNN Feature Extractor:** (Modified VGG or ResNet) Outputs feature maps (512 channels, 2x32 size).
-2.  **Patch Encoder:** Projects spatial features into 384-dim embedding space.
-3.  **Transformer Encoder:** Captures contextual relationships among visual tokens.
-4.  **Merging Module:** Aggregates features from all chunks of a single text line.
-5.  **Transformer Decoder:** Generates the final Khmer character sequence.
+### 2. Model Architecture: SeqSE-CRNN-Transformer
+Our proposed architecture integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
 
-![Model Architecture](./assets/Model-Architecture.png)
+1.  **Sequence-Aware CNN (VGG + 1D-SE):**
+    *   A modified VGG backbone enhanced with **1D Squeeze-and-Excitation** blocks.
+    *   Unlike standard SE, these blocks use **vertical pooling** to refine feature channels while strictly preserving the horizontal width (sequence information).
+
+2.  **Patch Module:**
+    *   Projects spatial features into a condensed **384-dimensional** embedding space.
+    *   Adds local positional encodings to preserve spatial order within chunks.
+
+3.  **Transformer Encoder:**
+    *   Captures contextual relationships among visual tokens within each independent chunk.
+
+4.  **Merging Module:**
+    *   Concatenates the encoded features from all chunks into a single unified sequence.
+    *   Adds **Global Positional Embeddings** to define the absolute position of tokens across the entire text line.
+
+5.  **BiLSTM Context Smoother:**
+    *   A Bidirectional LSTM layer that processes the merged sequence.
+    *   **Purpose:** Bridges the "context gap" between independent chunks by smoothing boundary discontinuities, ensuring a seamless flow of information across the text line.
+
+6.  **Transformer Decoder:**
+    *   Generates the final Khmer character sequence using the globally smoothed context.
+
+![Model Architecture](./assets/proposed-architecture.png)
 
 ---
 
@@ -70,7 +88,7 @@ The model consists of five key modules:
 
 ## Quantitative Analysis
 
-We benchmarked our **VGG-Transformer** and **ResNet-Transformer** models against Tesseract-OCR (v4/v5).
+We benchmarked our proposed **SeqSE-CRNN-Tranformer** against VGG-Transformer and ResNet-Transformer models, and Tesseract-OCR.
 
 **Character Error Rate (CER %)** - *Lower is better*
 
@@ -79,36 +97,37 @@ TABLE 1: Character Error Rate (CER in %) results on the KHOB, Legal Documents, a
 | Model | KHOB | Legal Documents | Printed Word |
 | :--- | :--- | :--- | :--- |
 | Tesseract-OCR | 9.36% | 24.30% | 8.02% |
-| VGG-Transformer | **5.07%** | **10.27%** | 3.61% |
+| VGG-Transformer | 5.07% | 10.27% | 3.61% |
 | ResNet-Transformer | 5.85% | 11.57% | **2.80%** |
+| SeqSE-CRNN-Transformer | **4.79%** | **9.13%** | 3.44% |
 
 ---
 
 ## Qualitative Analysis
 
 TABLE 2: Failure cases of CNN-Transformer vs Tesseract OCR on KHOB, Legal Documents, and Printed Word
-
-| Instance | Ground-Truth | VGG-Transformer | ResNet-Transformer | Tesseract-OCR |
-| :---: | :--- | :--- | :--- | :--- |
-| <img src="./assets/f_case_1.png" width="200"> | អគ្គលេខាធិការ<br>ដ្ឋានគណៈកម្មាធិ<br>ការដឹកនាំ | អគ្គរលេខ<span style="color:red">ខះ</span>ិការដ្ឋ<br>នគណៈកម្មា<span style="color:red">ឌិ</span>ការ<br><span style="color:red">ល</span>ដឹកនាំ | <span style="color:red">ភ្ភ្គរ</span>លេខ<span style="color:red">ះ</span>ធិការដ្ឋ<br>ន<span style="color:red">#</span>ណៈកម្មជិការ<br>ដឹកនាំ | .«<span style="color:red">ក្កលរេទានិការដ្ឋទកណៈ<br>កម្មាទិការដ្ឹកទាាំ</span> |
-| <img src="./assets/f_case_2.png" width="200"> | និងកែសម្រួល<br>សមាសភាពរាជ<br>រដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុ<br>ជា | និងកែសម្រួល<br>សមាសភាពរាជ<br>រដ្ឋាភិបាល<span style="color:red">នៃ</span>ព្រះ<br>រាជាណាចក្រកម្ពុ<br>ជា | <span style="color:red">1664000 ប្រយុ<br>រសម្ព័ក៌មានស<br>ង្គមាត់០០០០ វិបែង<br>ស៊្យ័យ(4បុណ្ណ</span> | និងកែសម្រួលសមាស<br>ភាពរាជ<span style="color:red">ន្នា</span>ភិបាលនៃ<span style="color:red">ទ្រះ</span><br>រាជាណាចក្រកម្ពុជា |
-| <img src="./assets/f_case_3.png" width="200"> | ឧបនាយករដ្ឋម<br>ន្ត្រី | <span style="color:red">ខួ</span>បនាយករដ្ឋម<span style="color:red">ន្ត្រី</span> | ឧបនាយករដ្ឋម<br><span style="color:red">ន្ត្រកី</span> | <span style="color:red">ទូ</span>បនាយករដ្ឋម<br><span style="color:red">ន្ត្រកី</span> |
-| <img src="./assets/f_case_4.png" width="200"> | 180818125 | 1808<span style="color:red">1</span>8125 | 18<span style="color:red">0</span>818125 | 180818125 |
+| **Category** | **Case 1** | **Case 2** | **Case 3** | **Case 4** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Images** | ![Case 1](./assets/f_case_1.png) | ![Case 2](./assets/f_case_2.png) | ![Case 3](./assets/f_case_3.png) | ![Case 4](./assets/f_case_4.png) |
+| **Ground-Truth** | អគ្គលេខាធិការដ្ឋានគណៈកម្មាធិការដឹកនាំ | និងកែសម្រួលសមាសភាពរាជរដ្ឋាភិបាលនៃព្រះរាជាណាចក្រកម្ពុជា | ឧបនាយករដ្ឋមន្ត្រី | 180818125 |
+| **SeqSE-CRNN-Tr** | អគ្គលេខះ<span style="color:red">ទិកា</span>ដ្ឋាន<span style="color:red">ឧកណះ</span>ក<span style="color:red">ម្ពា</span>ធិការ<span style="color:red">ដើ</span>កនាំ | និងកែសម្រួលសមាសភាពរាជរដ្ឋាភិបាល<span style="color:red">នៃ</span>ព្រះរាជាណាចក្រកម្ពុជា | ឧបនាយក<span style="color:red">រដ្ឋ</span>មន្ត្រី | 180818<span style="color:red">18</span>125 |
+| **VGG-Tr** | អគ្គលេខ<span style="color:red">ះទិ</span>ការដ្ឋានគណៈក<span style="color:red">ម្ពា</span>ធិការ<span style="color:red">ដើ</span>កនាំ | និងកែសម្រួលសមាសភាពរាជរដ្ឋាភិបាល<span style="color:red">នៃ</span>ព្រះរាជាណាចក្រកម្ពុជា | <span style="color:red">ខ្ញុំ</span>បនាយករដ្ឋមន្ត្រី | 18081<span style="color:red">\|</span>8125 |
+| **ResNet-Tr** | <span style="color:red">ភ្លេ</span>ល<span style="color:red">ខះ</span>ធិការដ្ឋាន<span style="color:red">#</span>ណៈក<span style="color:red">ម្ព</span>ដិការដឹកនាំ | និងកែសម្រួលសមាសភាពរាជរដ្ឋាភិបាល<span style="color:red">នៃ</span>ព្រះរាជាណាចក្រកម្ពុជា | ឧបនាយករដ្ឋម<span style="color:red">ន្តី</span> | 18<span style="color:red">0</span>818125 |
+| **Tesseract** | .<span style="color:red">«</span>ល<span style="color:red">ខទ</span>ទិការដ្ឋាន<span style="color:red">ទ</span>ណៈក<span style="color:red">ម្ពា</span>ធិការដឹក<span style="color:red">ឆាំ</span> | និងកែសម្រួលសមាសភាពរាជ<span style="color:red">ន្ឋា</span>ភិបាលនៃ<span style="color:red">ទ្រះ</span>រាជាណាចក្រកម្ពុជា | <span style="color:red">ទូ</span>បនាយករដ្ឋមន្ត្រី | 180818125 |
 
 TABLE 3: Example of CNN-Transformer vs Tesseract OCR compared with the ground truth. Errors in the predictions are highlighted in red.
-
-| Instance | Ground-Truth | VGG-Transformer | ResNet-Transformer | Tesseract-OCR |
-| :---: | :--- | :--- | :--- | :--- |
-| <img src="./assets/s_case_1.png" width="200"> | រាជរដ្ឋាភិបាលកម្ពុជា | រាជរដ្ឋាភិបាលកម្ពុជា | រាជរដ្ឋាភិបាលកម្ពុជា | រាជរដ្ឋា<span style="color:red">គិធា</span>លកម្ពុជា |
-| <img src="./assets/s_case_2.png" width="200"> | ព្រះរាជាណាចក្រកម្ពុ<br>ជា | ព្រះរាជាណាចក្រកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | ព្រះរាជាណាច<span style="color:red">ត្រ</span>កម្ពុ<br>ជា |
-| <img src="./assets/s_case_3.png" width="200"> | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<span style="color:red">៖</span><br>រាជាណាចក្រកម្ពុជា |
-| <img src="./assets/s_case_4.png" width="200"> | 011048599 | 011048599 | 011048599 | 0110<span style="color:red">H</span>85<span style="color:red">6</span>9<span style="color:red">:</span> |
-| <img src="./assets/s_case_5.png" width="200"> | ឈុនហៀង | ឈុនហៀង | ឈុនហៀង | <span style="color:red">_</span>ឈុនហៀង |
+| **Category** | **Case 1** | **Case 2** | **Case 3** | **Case 4** | **Case 5** |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Images** | <img src="./assets/s_case_1.png" width="150"> | <img src="./assets/s_case_2.png" width="150"> | <img src="./assets/s_case_3.png" width="150"> | <img src="./assets/s_case_4.png" width="150"> | <img src="./assets/s_case_5.png" width="150"> |
+| **Ground-Truth** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុ<br>ជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 | ឈុនហៀង |
+| **VGG-Trans** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 | ឈុនហៀង |
+| **ResNet-Trans** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 | ឈុនហៀង |
+| **Tesseract-OCR** | រាជរដ្ឋា<span style="color:red">គិធា</span>លកម្ពុជា | ព្រះរាជាណាច<span style="color:red">ត្រ</span>កម្ពុ<br>ជា | រាជរដ្ឋាភិបាលនៃព្រះ<span style="color:red">៖</span><br>រាជាណាចក្រកម្ពុជា | 0110<span style="color:red">H</span>85<span style="color:red">6</span>9<span style="color:red">:</span> | <span style="color:red">_</span>ឈុនហៀង |
 
 **Key Findings:**
-*   **VGG-Transformer** performs best on long, complex text lines (Documents).
-*   **ResNet-Transformer** performs best on short, isolated words.
-*   Both deep learning approaches significantly outperform Tesseract-OCR on degraded legal documents.
+*   **SeqSE-CRNN-Transformer (Ours)** achieves the highest accuracy on long, continuous text lines (KHOB), demonstrating that the **BiLSTM Context Smoother** effectively resolves the chunk boundary discontinuities that limit standard Transformer baselines.
+*   On degraded and complex legal documents, **SeqSE-CRNN-Transformer** demonstrates superior robustness, significantly outperforming all baselines. This attributes to the **Sequence-Aware SE blocks**, which filter background noise while preserving character-specific features.
+*   **ResNet-Transformer** retains a slight advantage on short, isolated words where global context is less critical, though our proposed model still outperforms the VGG-Transformer baseline in this category.
 
 ### Installation
 ```bash
@@ -143,7 +162,7 @@ To recognize a different document, open inference.py in your text editor. Scroll
 if __name__ == "__main__":
     # --- CONFIGURATION ---
     IMAGE_PATH = "test_image.png" # input image
-    MODEL_PATH = "./checkpoints/khmerocr_epoch100.pth" # choose model
+    MODEL_PATH = "./checkpoints/khmerocr_vgg_lstm_epoch100.pth" # choose model
     CHAR2IDX_PATH = "char2idx.json" # Tokenizer
     
     # Output Folder
