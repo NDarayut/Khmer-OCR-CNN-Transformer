@@ -120,9 +120,10 @@ TABLE 3: Example of CNN-Transformer vs Tesseract OCR compared with the ground tr
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Images** | <img src="./assets/s_case_1.png" width="150"> | <img src="./assets/s_case_2.png" width="150"> | <img src="./assets/s_case_3.png" width="150"> | <img src="./assets/s_case_4.png" width="150"> | <img src="./assets/s_case_5.png" width="150"> |
 | **Ground-Truth** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុ<br>ជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 | ឈុនហៀង |
-| **VGG-Trans** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 | ឈុនហៀង |
-| **ResNet-Trans** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 | ឈុនហៀង |
-| **Tesseract-OCR** | រាជរដ្ឋា<span style="color:red">គិធា</span>លកម្ពុជា | ព្រះរាជាណាច<span style="color:red">ត្រ</span>កម្ពុ<br>ជា | រាជរដ្ឋាភិបាលនៃព្រះ<span style="color:red">៖</span><br>រាជាណាចក្រកម្ពុជា | 0110<span style="color:red">H</span>85<span style="color:red">6</span>9<span style="color:red">:</span> | <span style="color:red">_</span>ឈុនហៀង |
+| **SeqSE-CRNN-Tr** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 | ឈុនហៀង |
+| **VGG-Tr** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 | ឈុនហៀង |
+| **ResNet-Tr** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 | ឈុនហៀង |
+| **Tesseract** | រាជរដ្ឋា<span style="color:red">គិធា</span>លកម្ពុជា | ព្រះរាជាណាច<span style="color:red">ត្រ</span>កម្ពុ<br>ជា | រាជរដ្ឋាភិបាលនៃព្រះ<span style="color:red">៖</span><br>រាជាណាចក្រកម្ពុជា | 0110<span style="color:red">H</span>85<span style="color:red">6</span>9<span style="color:red">:</span> | <span style="color:red">_</span>ឈុនហៀង |
 
 **Key Findings:**
 *   **SeqSE-CRNN-Transformer (Ours)** achieves the highest accuracy on long, continuous text lines (KHOB), demonstrating that the **BiLSTM Context Smoother** effectively resolves the chunk boundary discontinuities that limit standard Transformer baselines.
