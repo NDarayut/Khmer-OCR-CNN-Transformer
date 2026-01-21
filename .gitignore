@@ -103,6 +103,8 @@ models/
 
 setup_hf_model/
 
+results/
+
 # Files
 loss_curve.png
 inference_results.txt
