@@ -1,12 +1,12 @@
-# A Holistic Approach to Khmer Optical Character Recognition Using a Sequence-Aware Hybrid CRNN-Transformer
+# A Squeeze-and-Excitation Transformer Network for Khmer Optical Character Recognition
 
-This repository contains the implementation, dataset generation scripts, and evaluation results for the **SeqSE-CRNN-Transformer**, a high-performance Khmer Optical Character Recognition (OCR) system. The model utilizes a hybrid architecture combining **Sequence-Aware Squeeze-and-Excitation (1D-SE)** blocks for feature extraction and **BiLSTM smoothing** for robust sequence modeling, specifically designed to handle the complexity and length of Khmer script.
+This repository contains the implementation, datasets, and evaluation results for the **Squeeze-and-Excitation Transformer Network**, a high-performance Khmer Text Recognition model that utilizes a hybrid architecture combining **Squeeze-and-Excitation** blocks for feature extraction and **BiLSTM** smoothing for context smoothing, specifically designed to handle the complexity and length of Khmer script.
 
 ## Project Overview
 
 Khmer script presents unique challenges for OCR due to its large character set, complex sub-consonant stacking, and variable text line lengths. This project proposes an enhanced pipeline that:
 1.  **Chunks** long text lines into manageable overlapping segments.
-2.  **Extracts Features** using a **Sequence-Aware CNN** (VGG + 1D-SE) that preserves horizontal spatial information.
+2.  **Extracts Features** using a **Squeeze-and-Excitation Network** (SE-VGG) that preserves horizontal spatial information.
 3.  **Encodes** local spatial features using a Transformer Encoder.
 4.  **Merges** the encoded chunks into a unified sequence.
 5.  **Smooths Context** using a **BiLSTM** layer to resolve boundary discontinuities between chunks.
@@ -42,14 +42,14 @@ We generated **200,000 synthetic images** to ensure robustness against font vari
 To handle variable-length text lines without aggressive resizing, we employ a "Chunk-and-Merge" strategy:
 *   **Resize:** Input images are resized to a fixed height of 48 pixels while maintaining aspect ratio.
 *   **Chunking:** The image is split into overlapping chunks (Size: 48x100 px, Overlap: 16 px).
-*   **Independent Encoding:** Each chunk is processed independently by the CNN and Transformer Encoder to allow for parallel batch processing.
+*   **Independent Encoding:** Each chunk is processed independently by the Squeeze-and-Excitation Network and Transformer Encoder to allow for parallel batch processing.
 
 ### 2. Model Architecture: SeqSE-CRNN-Transformer
 Our proposed architecture integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
 
 ![Model Architecture](./assets/proposed-architecture.png)
 
-1.  **Sequence-Aware CNN (VGG + 1D-SE):**
+1.  **Squeeze-and-Excitation Network (SE-VGG):**
     *   A modified VGG backbone with **1D Squeeze-and-Excitation** blocks after convolutional layer **3**, **4**, and **5**.
     *   Unlike standard SE, these blocks use **vertical pooling** to refine feature channels while strictly preserving the horizontal width (sequence information).
 
@@ -104,36 +104,23 @@ TABLE 1: Character Error Rate (CER in %) results on the KHOB, Legal Documents, a
 | Tesseract-OCR | 9.36 | 24.30 | 8.02 |
 | VGG-Transformer | 5.07 | 10.27 | 3.61 |
 | ResNet-Transformer | 5.85 | 11.57 | $\textcolor{yellow}{2.80}$ |
-| SeqSE-CRNN-Transformer | $\textcolor{yellow}{4.79}$ | $\textcolor{yellow}{9.13}$ | 3.44 |
+| **Proposed Model** | $\textcolor{yellow}{4.79}$ | $\textcolor{yellow}{9.13}$ | 3.44 |
 
 ---
 
 ## Qualitative Analysis
 
-TABLE 2: Failure cases of CNN-Transformer vs Tesseract OCR on KHOB, Legal Documents, and Printed Word
-| **Category** | **Case 1** | **Case 2** | **Case 3** | **Case 4** |
-| :--- | :--- | :--- | :--- | :--- |
-| **Images** | ![Case 1](./assets/f_case_1.png) | ![Case 2](./assets/f_case_2.png) | ![Case 3](./assets/f_case_3.png) | ![Case 4](./assets/f_case_4.png) |
-| **Ground-Truth** | $\text{អគ្គលេខាធិការដ្ឋាន}$ $\text{គណៈកម្មាធិការដឹកនាំ}$ | $\text{និងកែសម្រួលសមាសភាព}$ $\text{រាជរដ្ឋាភិបាលនៃ}$ $\text{ព្រះរាជាណាចក្រកម្ពុជា}$ | $\text{ឧបនាយករដ្ឋមន្ត្រី}$ | 180818125 |
-| **SeqSE-CRNN-Tr** | $\text{អគ្គលេខះ}\textcolor{red}{\text{ទិកា}}\text{ដ្ឋាន}$ $\textcolor{red}{\text{ឧកណះ}}\text{ក}\textcolor{red}{\text{ម្ពា}}\text{ធិការ}$ $\textcolor{red}{\text{ដើ}}\text{កនាំ}$ | $\text{និងកែសម្រួលសមាសភាព}$ $\text{រាជរដ្ឋាភិបាល}\textcolor{red}{\text{នៃ}}$ $\text{ព្រះរាជាណាចក្រកម្ពុជា}$ | $\text{ឧបនាយក}\textcolor{red}{\text{រដ្ឋ}}\text{មន្ត្រី}$ | $180818\textcolor{red}{18}125$ |
-| **VGG-Tr** | $\text{អគ្គលេខ}\textcolor{red}{\text{ះទិ}}\text{ការដ្ឋាន}$ $\text{គណៈក}\textcolor{red}{\text{ម្ពា}}\text{ធិការ}$ $\textcolor{red}{\text{ដើ}}\text{កនាំ}$ | $\text{និងកែសម្រួលសមាសភាព}$ $\text{រាជរដ្ឋាភិបាល}\textcolor{red}{\text{នៃ}}$ $\text{ព្រះរាជាណាចក្រកម្ពុជា}$ | $\textcolor{red}{\text{ខ្ញុំ}}\text{បនាយករដ្ឋមន្ត្រី}$ | $18081\textcolor{red}{\vert}8125$ |
-| **ResNet-Tr** | $\textcolor{red}{\text{ភ្លេ}}\text{ល}\textcolor{red}{\text{ខះ}}\text{ធិការដ្ឋាន}$ $\text{ណៈក}\textcolor{red}{\text{ម្ព}}\text{ដិការដឹកនាំ}$ | $\text{និងកែសម្រួលសមាសភាព}$ $\text{រាជរដ្ឋាភិបាល}\textcolor{red}{\text{នៃ}}$ $\text{ព្រះរាជាណាចក្រកម្ពុជា}$ | $\text{ឧបនាយករដ្ឋម}\textcolor{red}{\text{ន្តី}}$ | $18\textcolor{red}{0}818125$ |
-| **Tesseract** | $.\textcolor{red}{\text{«}}\text{ល}\textcolor{red}{\text{ខទ}}\text{ទិការដ្ឋាន}$ $\textcolor{red}{\text{ទ}}\text{ណៈក}\textcolor{red}{\text{ម្ពា}}\text{ធិការដឹក}\textcolor{red}{\text{ឆាំ}}$ | $\text{និងកែសម្រួលសមាសភាព}$ $\text{រាជ}\textcolor{red}{\text{ន្ឋា}}\text{ភិបាល}$ $\text{នៃ}\textcolor{red}{\text{ទ្រះ}}\text{រាជាណា}\text{ចក្រកម្ពុជា}$ | $\textcolor{red}{\text{ទូ}}\text{បនាយករដ្ឋមន្ត្រី}$ | 180818125 |
+TABLE 2: Failure cases on KHOB, Legal Document, and Printed Word dataset
+![failure cases](assets/failure_cases.png)
 
-TABLE 3: Example of CNN-Transformer vs Tesseract OCR compared with the ground truth. Errors in the predictions are highlighted in red.
-| **Category** | **Case 1** | **Case 2** | **Case 3** | **Case 4** 
-| :--- | :--- | :--- | :--- | :--- 
-| **Images** | <img src="./assets/s_case_1.png" width="150"> | <img src="./assets/s_case_2.png" width="150"> | <img src="./assets/s_case_3.png" width="150"> | <img src="./assets/s_case_4.png" width="150"> |
-| **Ground-Truth** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុ<br>ជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 
-| **SeqSE-CRNN-Tr** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 
-| **VGG-Tr** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 
-| **ResNet-Tr** | រាជរដ្ឋាភិបាលកម្ពុជា | ព្រះរាជាណាចក្រកម្ពុជា | រាជរដ្ឋាភិបាលនៃព្រះ<br>រាជាណាចក្រកម្ពុជា | 011048599 
-| **Tesseract** | $\text{រាជរដ្ឋា}\textcolor{red}{\text{គិធា}}\text{លកម្ពុជា}$ | $\text{ព្រះរាជាណាច}\textcolor{red}{\text{ត្រ}}\text{កម្ពុ}$<br>$\text{ជា}$ | $\text{រាជរដ្ឋាភិបាលនៃព្រះ}\textcolor{red}{\text{៖}}$<br>$\text{រាជាណាចក្រកម្ពុជា}$ | $0110\textcolor{red}{\text{H}}85\textcolor{red}{6}9\textcolor{red}{:}$ |
+TABLE 3: Example of proposed, and baseline model compared with the ground truth. Errors in the predictions are highlighted in red
+![success cases](assets/sucess_case.png)
 
 **Key Findings:**
-*   **SeqSE-CRNN-Transformer (Ours)** achieves the highest accuracy on long, continuous text lines (KHOB), demonstrating that the **BiLSTM Context Smoother** effectively resolves the chunk boundary discontinuities that limit standard Transformer baselines.
-*   On degraded and complex legal documents, **SeqSE-CRNN-Transformer** demonstrates superior robustness, significantly outperforming all baselines. This attributes to the **Sequence-Aware SE blocks**, which filter background noise while preserving character-specific features.
+*   **The Proposed Model** achieves the highest accuracy on long, continuous text lines (KHOB), demonstrating that the **BiLSTM Context Smoother** effectively resolves the chunk boundary discontinuities that limit standard Transformer baselines.
+*   On degraded and complex legal documents, **the proposed model** demonstrates superior robustness, significantly outperforming all baselines. This attributes to the **Squeeze-and-Excitation blocks**, which filter background noise while preserving character-specific features.
 *   **ResNet-Transformer** retains a slight advantage on short, isolated words where global context is less critical, though our proposed model still outperforms the VGG-Transformer baseline in this category.
+
 
 ### Installation
 ```bash
