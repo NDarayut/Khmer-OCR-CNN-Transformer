@@ -106,6 +106,7 @@ setup_hf_model/
 results/
 
 tesseract_test/
+failure_cases/
 
 # Files
 loss_curve.png
@@ -147,3 +148,6 @@ clean_vgg.txt
 test_image_2.txt 
 test_image_3.txt 
 loss_curves.png 
+
+failures_khob_eval.txt
+sort_failure.py
