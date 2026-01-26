@@ -5,6 +5,7 @@
 <hr>
 
 <p align="center">
+ <a href="https://github.com/netra-ai-lab/Khmer-OCR-CNN-Transformer"><b>GitHub</b></a> |
   <a href="https://huggingface.co/Darayut/khmer-text-recognition"><b>Model Download</b></a> |
     <a href="https://huggingface.co/collections/Darayut/khmer-text-synthetic"><b>Dataset Download</b></a> |
     <a href="https://huggingface.co/spaces/Darayut/Khmer-Text-Recognition"><b>Inference Space</b></a> |
