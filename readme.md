@@ -118,7 +118,7 @@ Our proposed architecture integrates sequence-aware attention and recurrent smoo
 
 ## Quantitative Analysis
 
-We benchmarked our proposed **SeqSE-CRNN-Tranformer** against VGG-Transformer and ResNet-Transformer models, and Tesseract-OCR.
+We benchmarked our **proposed model** against VGG-Transformer, ResNet-Transformer, and Tesseract-OCR.
 
 **Character Error Rate (CER %)** - *Lower is better*
 
