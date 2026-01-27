@@ -28,7 +28,6 @@ CONFIG = {
     "upload": {
         "enabled": True,
         "repo_id": "your username/khmer_scene_text_dataset",
-        # DO NOT hardcode tokens in scripts. Use `huggingface-cli login` or set HF_TOKEN env var.
         "hf_token": os.environ.get("HF_TOKEN") 
     }
 }
@@ -68,7 +67,7 @@ class KhmerSceneTextGenerator:
                 
                 return bg.crop((x, y, x + target_w, y + target_h))
             except Exception:
-                pass # Fallback to noise on error
+                pass
 
         # Fallback: Gray noise
         return Image.fromarray(np.random.randint(100, 200, (target_h, target_w), dtype=np.uint8))
@@ -142,7 +141,7 @@ def process_batch(batch_idx):
 # ============================================================
 def load_assets(config):
     """Loads fonts, backgrounds, and text corpus."""
-    print("⏳ Loading assets...")
+    print("Loading assets...")
     
     # Fonts
     font_dir = config['paths']['fonts']
@@ -165,7 +164,7 @@ def load_assets(config):
     for line in cleaned_lines:
         all_words.extend(line.split())
     
-    print(f"✅ Assets Loaded: {len(fonts)} Fonts, {len(bgs)} Backgrounds, {len(all_words)} Words.")
+    print(f"Assets Loaded: {len(fonts)} Fonts, {len(bgs)} Backgrounds, {len(all_words)} Words.")
     return all_words, fonts, bgs
 
 def main():
@@ -192,10 +191,10 @@ def main():
             if res is not None:
                 results.append(res)
 
-    print(f"✅ Generation Complete. Valid samples: {len(results)}")
+    print(f"Generation Complete. Valid samples: {len(results)}")
 
     # 3. Create Hugging Face Dataset
-    print("📦 converting to HF Dataset...")
+    print("converting to HF Dataset...")
     features_schema = Features({'image': HFDImage(), 'label': Value('string')})
     
     # Convert list of dicts to Dictionary of lists for efficient conversion
@@ -208,26 +207,26 @@ def main():
 
     # 4. Save Locally
     save_path = CONFIG['paths']['output_dir']
-    print(f"💾 Saving dataset to: {save_path}")
+    print(f"Saving dataset to: {save_path}")
     dataset.save_to_disk(save_path)
 
     # 5. Upload to Hub (Optional)
     if CONFIG["upload"]["enabled"]:
         repo_id = CONFIG["upload"]["repo_id"]
-        print(f"☁️ Uploading to Hugging Face Hub: {repo_id}")
+        print(f"Uploading to Hugging Face Hub: {repo_id}")
         
         token = CONFIG["upload"]["hf_token"]
         if not token:
-            print("⚠️ HF_TOKEN not found in config or env. Trying interactive login...")
+            print("HF_TOKEN not found in config or env. Trying interactive login...")
             login()
         else:
             login(token=token)
 
         try:
             dataset.push_to_hub(repo_id, private=True)
-            print(f"🎉 Successfully uploaded to https://huggingface.co/datasets/{repo_id}")
+            print(f"Successfully uploaded to https://huggingface.co/datasets/{repo_id}")
         except Exception as e:
-            print(f"❌ Upload failed: {e}")
+            print(f"Upload failed: {e}")
 
 if __name__ == "__main__":
     main()

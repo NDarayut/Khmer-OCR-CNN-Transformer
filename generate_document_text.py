@@ -163,7 +163,7 @@ def load_assets(config):
         if clean:
             cleaned_words.extend(clean.split())
             
-    print(f"✅ Loaded {len(cleaned_words):,} words and {len(fonts)} fonts.")
+    print(f"Loaded {len(cleaned_words):,} words and {len(fonts)} fonts.")
     return cleaned_words, fonts
 
 def main():
@@ -172,7 +172,7 @@ def main():
     num_samples = CONFIG["generation"]["num_samples"]
     
     # 2. Multiprocess Generation
-    print(f"🚀 Generating {num_samples} samples with {CONFIG['generation']['num_workers']} workers...")
+    print(f"Generating {num_samples} samples with {CONFIG['generation']['num_workers']} workers...")
     
     results = []
     with mp.Pool(
@@ -189,11 +189,11 @@ def main():
             if res:
                 results.append(res)
 
-    print(f"✅ Generated {len(results)} valid samples.")
+    print(f"Generated {len(results)} valid samples.")
 
     # 3. Save Dataset
     save_path = CONFIG["paths"]["output_dir"]
-    print(f"📦 Converting to Dataset and saving to: {save_path}")
+    print(f"Converting to Dataset and saving to: {save_path}")
     
     # Optimization: Dict of lists is faster to convert than list of dicts
     data_dict = {
@@ -208,20 +208,20 @@ def main():
     # 4. Upload
     if CONFIG["upload"]["enabled"]:
         repo_id = CONFIG["upload"]["repo_id"]
-        print(f"☁️ Uploading to {repo_id}...")
+        print(f"Uploading to {repo_id}...")
         
         token = CONFIG["upload"]["hf_token"]
         if not token:
-            print("⚠️ HF_TOKEN not set. Attempting interactive login...")
+            print("HF_TOKEN not set. Attempting interactive login...")
             login()
         else:
             login(token=token)
             
         try:
             dataset.push_to_hub(repo_id, private=False)
-            print(f"🎉 Success! https://huggingface.co/datasets/{repo_id}")
+            print(f"Success! https://huggingface.co/datasets/{repo_id}")
         except Exception as e:
-            print(f"❌ Upload failed: {e}")
+            print(f"Upload failed: {e}")
 
 if __name__ == "__main__":
     main()
