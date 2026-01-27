@@ -58,7 +58,7 @@ We generated **200,000 synthetic images** to ensure robustness against font vari
 | **Legal Documents** | Real | 227 | High variation in degradation, illumination, and distortion. |
 | **Printed Words** | Synthetic | 1,000 | Short, isolated words in 10 different fonts. |
 
-![Dataset Overview](./assets/dataset-overview.png)
+![Dataset Overview](/assets/dataset-overview.png)
 ---
 
 ## Methodology & Architecture
@@ -72,13 +72,13 @@ To handle variable-length text lines without aggressive resizing, we employ a "C
 ### 2. Model Architecture: SeqSE-CRNN-Transformer
 Our proposed architecture integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
 
-![Model Architecture](./assets/proposed-architecture.png)
+![Model Architecture](/assets/proposed-architecture.png)
 
 1.  **Squeeze-and-Excitation Network (SE-VGG):**
     *   A modified VGG backbone with **1D Squeeze-and-Excitation** blocks after convolutional layer **3**, **4**, and **5**.
     *   Unlike standard SE, these blocks use **vertical pooling** to refine feature channels while strictly preserving the horizontal width (sequence information).
 
-        ![SE Module](<assets/Sequence Attention CNN.png>)
+        ![SE Module](/assets/Sequence Attention CNN.png)
 
 
 2.  **Patch Module:**
@@ -96,7 +96,7 @@ Our proposed architecture integrates sequence-aware attention and recurrent smoo
     *   A Bidirectional LSTM layer that processes the merged sequence.
     *   **Purpose:** Bridges the "context gap" between independent chunks by smoothing boundary discontinuities, ensuring a seamless flow of information across the text line.
 
-        ![Context Smoothing Module](assets/BiLSTM-Module.png)
+        ![Context Smoothing Module](/assets/BiLSTM-Module.png)
 
 6.  **Transformer Decoder:**
     *   Generates the final Khmer character sequence using the globally smoothed context.
@@ -136,10 +136,10 @@ TABLE 1: Character Error Rate (CER in %) results on the KHOB, Legal Documents, a
 ## Qualitative Analysis
 
 TABLE 2: Failure cases on KHOB, Legal Document, and Printed Word dataset
-![failure cases](assets/failure_cases.png)
+![failure cases](/assets/failure_cases.png)
 
 TABLE 3: Example of proposed, and baseline model compared with the ground truth. Errors in the predictions are highlighted in red
-![success cases](assets/sucess_case.png)
+![success cases](/assets/sucess_case.png)
 
 **Key Findings:**
 *   **The Proposed Model** achieves the highest accuracy on long, continuous text lines (KHOB), demonstrating that the **BiLSTM Context Smoother** effectively resolves the chunk boundary discontinuities that limit standard Transformer baselines.
@@ -157,7 +157,7 @@ pip install -r requirements.txt
 ## Inference Usage
 This pipeline performs end-to-end OCR by first detecting text lines using Surya and then recognizing characters using our custom CNN-Transformer model.
 
-![Inference Pipeline](./assets/inference-pipeline.jpg)
+![Inference Pipeline](/assets/inference-pipeline.jpg)
 
 ### 1. Prerequisites
 You need to install Surya directly from its GitHub repository to ensure you have the latest detection features, or you just clone our repostiory which already contain surya:
@@ -205,7 +205,7 @@ python inference_pdf.py
 ```
 Below is the original document image and the result of the editable PDF with layout preservation after OCR:
 <p float="left">
-  <img src="khmer_document_4.jpg" width="40%" />
+  <img src="./assets/khmer_document_4.jpg" width="40%" />
   <img src="./assets/pdf_convert.png" width="45%" /> 
 </p>
 
