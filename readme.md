@@ -69,7 +69,7 @@ To handle variable-length text lines without aggressive resizing, we employ a "C
 *   **Chunking:** The image is split into overlapping chunks (Size: 48x100 px, Overlap: 16 px).
 *   **Independent Encoding:** Each chunk is processed independently by the Squeeze-and-Excitation Network and Transformer Encoder to allow for parallel batch processing.
 
-### 2. Model Architecture: SeqSE-CRNN-Transformer
+### 2. Model Architecture: Squeeze-and-Excitation Transformer Network
 Our proposed architecture integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
 
 ![Model Architecture](/assets/proposed-architecture.png)
@@ -193,18 +193,15 @@ python recognize_line.py \
 from recognize_line import recognize
 
 # 1. Basic Usage
-# Uses default model/vocab paths defined in recognize_line.py
 text = recognize("test_images/sample.png")
 print(f"Result: {text}")
 
 # 2. Batch Processing
-# The model loads only once, making subsequent predictions instant.
 images = ["img1.png", "img2.png", "img3.png"]
 for img in images:
     print(f"{img}: {recognize(img)}")
 
 # 3. Custom Configuration
-# Override defaults for specific calls (e.g., higher accuracy)
 text_custom = recognize(
     "test_image.png", 
     beam_width=5, 
