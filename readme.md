@@ -159,20 +159,66 @@ This pipeline performs end-to-end OCR by first detecting text lines using Surya 
 
 ![Inference Pipeline](/assets/inference-pipeline.jpg)
 
-### 1. Prerequisites
+## Prerequisites
 You need to install Surya directly from its GitHub repository to ensure you have the latest detection features, or you just clone our repostiory which already contain surya:
 ```bash
 # Install Surya from GitHub
 git clone https://github.com/datalab-to/surya.git
 ```
 
-### 2. How to Run
-To run the OCR on an image, and get result in the form of a text file, simply execute the script:
+
+## Local-Inference
+
+```bash
+cd Khmer-OCR-CNN-Transformer
+```
+
+### 1. Textline inference via CLI:
+```bash
+python recognize_line.py --image "test_images/sample.png"
+```
+Advanced Usage:
+Specify a custom model path, vocabulary, beam width, and save the output to a text file.
+```bash
+python recognize_line.py \
+  --image "sample.png" \
+  --model "checkpoints/model.pth" \
+  --vocab "char2idx.json" \
+  --beam 5 \
+  --output "results/sample_output.txt"
+```
+
+### 2. Textline inference via Python:
+```python
+from recognize_line import recognize
+
+# 1. Basic Usage
+# Uses default model/vocab paths defined in recognize_line.py
+text = recognize("test_images/sample.png")
+print(f"Result: {text}")
+
+# 2. Batch Processing
+# The model loads only once, making subsequent predictions instant.
+images = ["img1.png", "img2.png", "img3.png"]
+for img in images:
+    print(f"{img}: {recognize(img)}")
+
+# 3. Custom Configuration
+# Override defaults for specific calls (e.g., higher accuracy)
+text_custom = recognize(
+    "test_image.png", 
+    beam_width=5, 
+    model_path="checkpoints/experimental_model.pth"
+)
+```
+
+### 3. Image inference via Python:
 ```bash
 python inference.py
 ```
-### 3. How to Change the Input Image
+
 To recognize a different document, open inference.py in your text editor. Scroll to the very bottom of the file (inside the if __name__ == "__main__": block) and change the image_path variable:
+
 ```python
 # ===================================================
 # RUN EXAMPLE
@@ -198,7 +244,7 @@ if __name__ == "__main__":
     """
 ```
 
-### End-to-End Image to Edtiable PDF
+### 4. End-to-End Image to Edtiable PDF
 In order to automatically convert an image directly to PDF file while preserving the layout structure, execute the script below:
 ```bash
 python inference_pdf.py
