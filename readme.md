@@ -78,7 +78,7 @@ Our proposed architecture integrates sequence-aware attention and recurrent smoo
     *   A modified VGG backbone with **1D Squeeze-and-Excitation** blocks after convolutional layer **3**, **4**, and **5**.
     *   Unlike standard SE, these blocks use **vertical pooling** to refine feature channels while strictly preserving the horizontal width (sequence information).
 
-        ![SE Module](/assets/Sequence Attention CNN.png)
+        ![SE Module](</assets/Sequence Attention CNN.png>)
 
 
 2.  **Patch Module:**
