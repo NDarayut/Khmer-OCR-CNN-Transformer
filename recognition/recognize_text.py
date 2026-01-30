@@ -4,16 +4,16 @@ import logging
 from pathlib import Path
 
 # Import from the source package
-from config import OCRConfig
-from utils import setup_logging, autodetect_config
-from tokenizer import Tokenizer
-from predictor import OCRPredictor
+from recognition.config import OCRConfig
+from recognition.utils import setup_logging, autodetect_config
+from recognition.tokenizer import Tokenizer
+from recognition.predictor import OCRPredictor
 
 # Import your model architecture file
 try:
-    from model.se_model import KhmerOCR as SE_KhmerOCR
-    from model.vgg_model import KhmerOCR as VGG_KhmerOCR
-    from model.resnet_model import KhmerOCR as ResNet_KhmerOCR
+    from recognition.model.se_model import KhmerOCR as SE_KhmerOCR
+    from recognition.model.vgg_model import KhmerOCR as VGG_KhmerOCR
+    from recognition.model.resnet_model import KhmerOCR as ResNet_KhmerOCR
 
 except ImportError:
     print("Error: 'se_model.py' must be in the same directory.")
@@ -23,8 +23,8 @@ except ImportError:
 # GLOBAL SETTINGS & STATE
 # ==============================================================================
 # Define defaults here so you don't have to pass them every time
-DEFAULT_MODEL_PATH = "./weight/khmerocr_se_transformer.pth"
-DEFAULT_VOCAB_PATH = "char2idx.json"
+DEFAULT_MODEL_PATH = "./recognition/weight/khmerocr_se_transformer.pth"
+DEFAULT_VOCAB_PATH = "./recognition/char2idx.json"
 
 # Global variable to hold the model in memory (Singleton)
 _PREDICTOR_INSTANCE = None
@@ -123,9 +123,9 @@ if __name__ == "__main__":
     """
     USAGE EXAMPLE:
 
-        python recognition.py --image "test_images/sample.png"
+        python recognize_text.py --image  "test_img_1.png"
 
-        python recognition.py \
+        python recognize_text.py \
         --image "sample.png" \
         --model "weight/model.pth" \
         --vocab "char2idx.json" \
@@ -140,7 +140,7 @@ if __name__ == "__main__":
         --output: (Optional) Text file to save the result.
     
     RUN VIA PYTHON:
-        from recognize_line import recognize
+        from recognize_text import recognize
 
         # Basic usage (uses defaults defined in the file)
         text = recognize("test_image_1.png")
