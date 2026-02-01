@@ -1,0 +1,389 @@
+{
+    "filename": "pp_gov_4.tiff",
+    "dimensions": {
+        "width": 897,
+        "height": 1280
+    },
+    "elements": [
+        {
+            "category": "Text",
+            "category_id": 10,
+            "bbox": [
+                307,
+                48,
+                562,
+                141
+            ]
+        },
+        {
+            "category": "Picture",
+            "category_id": 7,
+            "bbox": [
+                71,
+                76,
+                207,
+                217
+            ]
+        },
+        {
+            "category": "Text",
+            "category_id": 10,
+            "bbox": [
+                30,
+                220,
+                242,
+                252
+            ]
+        },
+        {
+            "category": "Text",
+            "category_id": 10,
+            "bbox": [
+                31,
+                249,
+                246,
+                276
+            ]
+        },
+        {
+            "category": "Title",
+            "category_id": 11,
+            "bbox": [
+                385,
+                273,
+                520,
+                300
+            ]
+        },
+        {
+            "category": "Title",
+            "category_id": 11,
+            "bbox": [
+                434,
+                307,
+                473,
+                335
+            ]
+        },
+        {
+            "category": "Title",
+            "category_id": 11,
+            "bbox": [
+                132,
+                335,
+                773,
+                366
+            ]
+        },
+        {
+            "category": "Title",
+            "category_id": 11,
+            "bbox": [
+                144,
+                365,
+                762,
+                396
+            ]
+        },
+        {
+            "category": "Section-header",
+            "category_id": 8,
+            "bbox": [
+                299,
+                431,
+                607,
+                455
+            ]
+        },
+        {
+            "category": "Text",
+            "category_id": 10,
+            "bbox": [
+                157,
+                459,
+                458,
+                485
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                147,
+                484,
+                839,
+                510
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                157,
+                508,
+                638,
+                537
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                147,
+                536,
+                838,
+                563
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                157,
+                562,
+                535,
+                588
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                147,
+                588,
+                839,
+                615
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                158,
+                615,
+                565,
+                641
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                157,
+                640,
+                840,
+                667
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                158,
+                665,
+                678,
+                694
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                157,
+                693,
+                839,
+                719
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                158,
+                716,
+                838,
+                745
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                157,
+                744,
+                339,
+                769
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                146,
+                773,
+                840,
+                796
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                157,
+                793,
+                837,
+                819
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                146,
+                819,
+                840,
+                847
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                156,
+                846,
+                837,
+                875
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                155,
+                874,
+                839,
+                898
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                155,
+                897,
+                737,
+                927
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                145,
+                926,
+                839,
+                955
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                155,
+                951,
+                788,
+                978
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                154,
+                978,
+                840,
+                1006
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                154,
+                1005,
+                839,
+                1034
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                156,
+                1030,
+                838,
+                1057
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                155,
+                1055,
+                838,
+                1084
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                152,
+                1082,
+                479,
+                1109
+            ]
+        },
+        {
+            "category": "List-item",
+            "category_id": 4,
+            "bbox": [
+                145,
+                1112,
+                578,
+                1136
+            ]
+        },
+        {
+            "category": "Page-footer",
+            "category_id": 5,
+            "bbox": [
+                463,
+                1169,
+                479,
+                1176
+            ]
+        },
+        {
+            "category": "Page-footer",
+            "category_id": 5,
+            "bbox": [
+                44,
+                1198,
+                859,
+                1224
+            ]
+        },
+        {
+            "category": "Page-footer",
+            "category_id": 5,
+            "bbox": [
+                235,
+                1225,
+                669,
+                1245
+            ]
+        }
+    ]
+}
