@@ -4,6 +4,60 @@ import numpy as np
 from PIL import Image
 from config import Config
 
+def get_iou(box1, box2):
+    """Calculates Intersection over Union (IoU) to find overlaps."""
+    x1, y1, x2, y2 = box1
+    x3, y3, x4, y4 = box2
+    
+    # Intersection coordinates
+    ix1, iy1 = max(x1, x3), max(y1, y3)
+    ix2, iy2 = min(x2, x4), min(y2, y4)
+    
+    if ix2 <= ix1 or iy2 <= iy1: return 0.0
+    
+    intersection = (ix2 - ix1) * (iy2 - iy1)
+    area1 = (x2 - x1) * (y2 - y1)
+    area2 = (x4 - x3) * (y4 - y3)
+    
+    # We use "Intersection over Smallest Box" (IoS) 
+    # This is better for finding if one box is "inside" another
+    return intersection / min(area1, area2)
+
+def suppress_overlapping_boxes(boxes, overlap_threshold=0.7):
+    """Merges boxes that are stacked or highly overlapping."""
+    if not boxes: return []
+    
+    # Sort boxes by area (largest first)
+    boxes = sorted(boxes, key=lambda x: (x[0][2]-x[0][0])*(x[0][3]-x[0][1]), reverse=True)
+    
+    keep = []
+    merged_indices = set()
+
+    for i in range(len(boxes)):
+        if i in merged_indices: continue
+        
+        current_box, current_cls = boxes[i]
+        
+        for j in range(i + 1, len(boxes)):
+            if j in merged_indices: continue
+            
+            compare_box, compare_cls = boxes[j]
+            
+            # Check overlap
+            if get_iou(current_box, compare_box) > overlap_threshold:
+                # Merge the boxes: Take the outer boundaries
+                current_box = [
+                    min(current_box[0], compare_box[0]),
+                    min(current_box[1], compare_box[1]),
+                    max(current_box[2], compare_box[2]),
+                    max(current_box[3], compare_box[3])
+                ]
+                merged_indices.add(j)
+        
+        keep.append((current_box, current_cls))
+        
+    return keep
+
 def is_graphical_line(binary_crop):
     """
     Detects if the detected ink is a solid graphical line.
@@ -57,55 +111,136 @@ def validate_non_text_content(img_np, box):
 
     return [x1, y1, x2, y2]
 
-def snap_to_ink(img_np, box, padding=5, min_ink_pixels=10, expand_x=25):
+def analyze_content_type(binary_crop):
     """
-    Refined ink snapping:
-    - Lowered min_ink_pixels to 3 to catch small characters.
-    - Added a 'safety' check for pixel intensity.
+    Advanced structural analysis specifically for Khmer script.
+    Detects if a 'Picture/Table' box is actually a Title, Header, or Small Word.
+    """
+    h, w = binary_crop.shape[:2]
+    if h < 5 or w < 5: return 'text'
+    
+    # 1. Connected Component Analysis (The Blob Test)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary_crop)
+   
+    valid_blobs = [s for s in stats[1:] if s[cv2.CC_STAT_AREA] > 4]
+    num_blobs = len(valid_blobs)
+
+    # 2. Aspect Ratio (Khmer words/lines are long)
+    aspect_ratio = w / h
+    
+    # 3. Horizontal Projection Profile
+    row_sums = np.sum(binary_crop, axis=1)
+    ink_rows = row_sums > (np.max(row_sums) * 0.1)
+    transitions = np.sum(np.diff(ink_rows.astype(int)) != 0)
+
+    # Case A: It's clearly a paragraph (multiple lines)
+    if transitions >= 3: 
+        return 'text'
+
+    # Case B: It's a single word or short line (like "ស្ដីពី")
+    if transitions <= 2:
+        # Text is almost always wider than 1.5x height
+        if aspect_ratio > 1.3:
+            # If there are at least 2 blobs (consonant + vowel/diacritic), it's text
+            if num_blobs >= 2:
+                return 'text'
+            # Extremely wide single blobs are usually underlined text or lines
+            if aspect_ratio > 4.0:
+                return 'text'
+
+    # Case C: Density Check (Pictures/Logos are heavy, Text is airy)
+    density = cv2.countNonZero(binary_crop) / (w * h)
+    if density > 0.70 and aspect_ratio < 2.0:
+        return 'picture'
+
+    # Case D: Very small boxes that aren't square
+    if h < 30 and aspect_ratio > 1.5:
+        return 'text'
+
+    return 'picture'
+
+def snap_to_ink(img_np, box, padding=3, min_ink_pixels=5, lookahead=15, expand_y=5):
+    """
+    Dynamically expands the bounding box left and right until no more ink is found.
+    
+    Args:
+        lookahead: How many empty pixels to skip before deciding the line has ended.
+                   (Crucial for Khmer to bridge gaps between characters).
+        expand_y: Vertical search buffer to ensure we catch tall/low strokes.
     """
     x1, y1, x2, y2 = map(int, box)
     img_h, img_w = img_np.shape[:2]
 
-    # Define a WIDER search window to find cut-off text
-    search_x1 = max(0, x1 - expand_x)
-    search_x2 = min(img_w, x2 + expand_x)
+    # 1. Prepare a slightly taller vertical strip for searching
+    search_y1 = max(0, y1 - expand_y)
+    search_y2 = min(img_h, y2 + expand_y)
     
-    # We usually trust the vertical prediction, but ensure bounds
-    search_y1 = max(0, y1)
-    search_y2 = min(img_h, y2)
-
-    if (search_x2 - search_x1) < 2 or (search_y2 - search_y1) < 2: 
-        return None, False
-
-    # Crop the SEARCH WINDOW
-    crop = img_np[search_y1:search_y2, search_x1:search_x2]
-    gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY) if len(crop.shape) == 3 else crop
-
-    # Fast Rejections
-    if np.std(gray) < 5: return None, False
-    if np.mean(gray) > 250: return None, False
-
-    # Thresholding & Cleaning
+    # 2. Convert a horizontal band to binary for fast pixel checking
+    # We crop the full width of the image at the specific height of this line
+    full_band = img_np[search_y1:search_y2, 0:img_w]
+    gray = cv2.cvtColor(full_band, cv2.COLOR_RGB2GRAY) if len(full_band.shape) == 3 else full_band
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    cleaned_binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-
-    if is_graphical_line(cleaned_binary): return None, True
-    if cv2.countNonZero(cleaned_binary) < min_ink_pixels: return None, False
-
-    # Find the ink bounds inside the search window
-    coords = cv2.findNonZero(cleaned_binary)
-    if coords is None: return None, False
     
+    # Clean noise (ignore tiny speckles)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+
+    # Helper: Check if a specific column in our band has ink
+    def col_has_ink(x_coord):
+        if x_coord < 0 or x_coord >= img_w: return False
+        return cv2.countNonZero(binary[:, x_coord]) > 0
+
+    # 3. EXPAND LEFT
+    curr_x1 = x1
+    empty_count = 0
+    while curr_x1 > 0:
+        if col_has_ink(curr_x1 - 1):
+            curr_x1 -= 1
+            empty_count = 0 # Reset if ink found
+        else:
+            empty_count += 1
+            curr_x1 -= 1
+        
+        if empty_count >= lookahead:
+            curr_x1 += empty_count # Backtrack to where ink actually ended
+            break
+
+    # 4. EXPAND RIGHT
+    curr_x2 = x2
+    empty_count = 0
+    while curr_x2 < img_w:
+        if col_has_ink(curr_x2):
+            curr_x2 += 1
+            empty_count = 0
+        else:
+            empty_count += 1
+            curr_x2 += 1
+            
+        if empty_count >= lookahead:
+            curr_x2 -= empty_count # Backtrack
+            break
+
+    # 5. VERTICAL REFINEMENT
+    # Now that we have the full horizontal width, shrink top/bottom strictly to ink
+    final_crop = binary[:, curr_x1:curr_x2]
+    if final_crop.size == 0 or cv2.countNonZero(final_crop) < min_ink_pixels:
+        return None, False
+    
+    coords = cv2.findNonZero(final_crop)
     bx, by, bw, bh = cv2.boundingRect(coords)
 
-    # Convert back to Global Coordinates
-    final_x1 = max(0, search_x1 + bx - padding)
-    final_y1 = max(0, search_y1 + by - padding)
-    final_x2 = min(img_w, search_x1 + bx + bw + padding)
-    final_y2 = min(img_h, search_y1 + by + bh + padding)
+    # 6. CALCULATE FINAL COORDINATES with padding
+    # Padding on X is full, Padding on Y is halved to keep it tight
+    res_x1 = max(0, curr_x1 + bx - padding)
+    res_y1 = max(0, search_y1 + by - (padding // 2))
+    res_x2 = min(img_w, curr_x1 + bx + bw + padding)
+    res_y2 = min(img_h, search_y1 + by + bh + (padding // 2))
 
-    return [final_x1, final_y1, final_x2, final_y2], False
+    # Check for graphical line (e.g. underline or border)
+    if is_graphical_line(final_crop):
+        return None, True
+
+    return [res_x1, res_y1, res_x2, res_y2], False
 
 def extract_layout_elements(img, segmentation_map, pred_heatmap):
     """
@@ -114,6 +249,7 @@ def extract_layout_elements(img, segmentation_map, pred_heatmap):
         segmentation_map: argmax result (classes)
         pred_heatmap: max probability map (0.0 to 1.0)
     """
+    
     img_np = np.array(img.convert("RGB"))
 
     all_content_mask = (segmentation_map > Config.ENTRY_THRESHOLD).astype(np.uint8) * 255
@@ -125,7 +261,7 @@ def extract_layout_elements(img, segmentation_map, pred_heatmap):
     components = []
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
-        if h < 2 or w < 2: continue
+        if h < 1 or w < 2: continue
 
         # Confidence Scoring logic
         mask_cnt = np.zeros((h, w), dtype=np.uint8)
@@ -203,30 +339,58 @@ def extract_layout_elements(img, segmentation_map, pred_heatmap):
                 curr_x1, curr_y1, curr_x2, curr_y2 = nx1, ny1, nx2, ny2
         intermediate_results.append(((curr_x1, curr_y1, curr_x2, curr_y2), dominant_class))
 
+    # 5. Final Output Generation
     output_boxes = []
     output_crops = []
 
+    raw_results = []
+    
+    text_classes = [1, 2, 4, 5, 6, 8, 10, 11] 
+    
+    # IDs that the AI might hallucinate for text (Formula, Picture, Table)
+    picture_classes = [3, 7, 9]
+
     for (box, cls_id) in intermediate_results:
-
         refined_box = None
+        target_cls = cls_id
+        
+        # Binary crop for analysis
+        x1, y1, x2, y2 = map(int, box)
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(img_np.shape[1], x2), min(img_np.shape[0], y2)
+        
+        crop_roi = img_np[y1:y2, x1:x2]
+        if crop_roi.size == 0: continue
+        
+        gray = cv2.cvtColor(crop_roi, cv2.COLOR_RGB2GRAY) if len(crop_roi.shape) == 3 else crop_roi
+        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-        padding = Config.PADDING
+        if cls_id in picture_classes:
+            if analyze_content_type(binary) == 'text':
+                target_cls = 10 
 
-        if cls_id in Config.TEXT_CLASSES:
-
-            refined_box, is_ignored = snap_to_ink(img_np, box, padding=padding)
+        # Note: target_cls might have changed to 10 above
+        if target_cls in text_classes or target_cls == 10:
+            # Dynamic snapping to capture Khmer diacritics correctly
+            refined_box, is_ignored = snap_to_ink(img_np, box, padding=Config.PADDING, lookahead=15)
         else:
-            
+            # Solid validation for real pictures/tables
             refined_box = validate_non_text_content(img_np, box)
-
             if refined_box is not None:
-                 refined_box = [
-                    max(0, refined_box[0]-padding), max(0, refined_box[1]-padding),
-                    min(img_np.shape[1], refined_box[2]+padding), min(img_np.shape[0], refined_box[3]+padding)
+                refined_box = [
+                    max(0, refined_box[0]-Config.PADDING), max(0, refined_box[1]-Config.PADDING),
+                    min(img_np.shape[1], refined_box[2]+Config.PADDING), min(img_np.shape[0], refined_box[3]+Config.PADDING)
                 ]
 
         if refined_box is not None:
-            output_boxes.append((refined_box, cls_id))
-            output_crops.append(img.crop(refined_box))
-        
+            raw_results.append((refined_box, target_cls))
+
+    # Apply collision suppression to remove stacked boxes
+    filtered_results = suppress_overlapping_boxes(raw_results, overlap_threshold=0.7)
+
+    # Final lists
+    for box, cls_id in filtered_results:
+        output_boxes.append((box, cls_id))
+        output_crops.append(img.crop(box))
+
     return output_crops, output_boxes
