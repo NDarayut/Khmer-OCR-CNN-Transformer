@@ -69,7 +69,7 @@ def _get_predictor(model_path=None, vocab_path=None):
 # PUBLIC API
 # ==============================================================================
 
-def recognize(image_path: str, beam_width: int = 3, model_path=None, vocab_path=None) -> str:
+def recognize(image_input, beam_width: int = 3, model_path=None, vocab_path=None) -> str:
     """
     Recognizes text from an image path.
     
@@ -83,13 +83,26 @@ def recognize(image_path: str, beam_width: int = 3, model_path=None, vocab_path=
         str: The predicted text.
     """
     predictor = _get_predictor(model_path, vocab_path)
-    
     try:
-        result_text = predictor.predict(image_path, beam_width=beam_width)
+        # Most predictors can handle PIL images. If yours requires a path, 
+        # we'd need to modify predictor.py, but let's assume it handles objects.
+        result_text = predictor.predict(image_input, beam_width=beam_width)
         return result_text
     except Exception as e:
-        print(f"Prediction error for {image_path}: {e}")
+        print(f"Prediction error: {e}")
         return ""
+
+def recognize_batch(image_list: list, beam_width: int = 1, batch_size: int = 8, model_path=None, vocab_path=None) -> list:
+    if not image_list:
+        return []
+    
+    predictor = _get_predictor(model_path, vocab_path)
+    try:
+        # Pass the batch_size to the predictor
+        return predictor.predict_batch(image_list, beam_width=beam_width, batch_size=batch_size)
+    except Exception as e:
+        print(f"Batch prediction error: {e}")
+        return [recognize(img, beam_width, model_path, vocab_path) for img in image_list]
 
 # ===================
 # CLI ENTRY POINT

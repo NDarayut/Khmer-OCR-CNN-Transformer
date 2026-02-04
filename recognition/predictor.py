@@ -5,6 +5,7 @@ from pathlib import Path
 from recognition.config import OCRConfig
 from recognition.tokenizer import Tokenizer
 from recognition.preprocessor import ImagePreprocessor
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -133,3 +134,66 @@ class OCRPredictor:
 
         best_seq = sorted(completed, key=lambda x: x[0], reverse=True)[0][1] if completed else beams[0][1]
         return self.tokenizer.decode(best_seq)
+    
+    def predict_batch(self, image_list: list, beam_width: int = 1, batch_size: int = 8) -> list:
+        """
+        Processes a list of images in mini-batches with a progress bar.
+        """
+        if not image_list:
+            return []
+
+        all_results = []
+        
+        # Wrap the range in tqdm for a progress bar
+        pbar = tqdm(total=len(image_list), desc="OCR Recognition", unit="line")
+
+        for i in range(0, len(image_list), batch_size):
+            mini_batch = image_list[i : i + batch_size]
+            
+            all_chunks = []
+            chunk_counts = []
+
+            # 1. Preprocess mini-batch
+            for img in mini_batch:
+                chunks = self.preprocessor.process(img)
+                all_chunks.append(chunks)
+                chunk_counts.append(chunks.size(0))
+            
+            batch_tensor = torch.cat(all_chunks, dim=0).to(self.device)
+
+            with torch.no_grad():
+                # 2. Parallel Visual Extraction
+                f = self.model.cnn(batch_tensor)
+                p_out = self.model.patch(f)
+                p = p_out[0] if isinstance(p_out, tuple) else p_out
+                p = p.transpose(0, 1).contiguous()
+                enc_out = self.model.enc(p).transpose(0, 1)
+
+                # 3. Decode each image in the mini-batch
+                current_idx = 0
+                for count in chunk_counts:
+                    img_enc = enc_out[current_idx : current_idx + count]
+                    current_idx += count
+
+                    N, L, D = img_enc.shape
+                    merged = img_enc.reshape(1, N * L, D)
+
+                    limit = min(N * L, self.model.global_pos.size(0))
+                    pos_emb = self.model.global_pos[:limit, :].unsqueeze(0)
+                    merged = merged[:, :limit, :] + pos_emb if (N * L) > limit else merged + pos_emb
+
+                    if hasattr(self.model, 'context_bilstm'):
+                        memory, _ = self.model.context_bilstm(merged)
+                    else:
+                        memory = merged
+
+                    if beam_width <= 1:
+                        all_results.append(self._greedy_decode(memory))
+                    else:
+                        all_results.append(self._beam_search(memory, beam_width))
+            
+            # Update progress bar by the number of images processed in this mini-batch
+            pbar.update(len(mini_batch))
+
+        pbar.close()
+        return all_results
