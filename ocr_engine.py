@@ -115,7 +115,7 @@ def main():
     
     # Optional Arguments
     parser.add_argument("--output", type=str, default="ocr_result.txt", help="Path to save recognized text")
-    parser.add_argument("--padding", type=int, default=5, help="Padding around crops (default: 5)")
+    parser.add_argument("--padding", type=int, default=6, help="Padding around crops (default: 5)")
     parser.add_argument("--beam", type=int, default=1, help="Beam width for recognition (1=Greedy, faster)")
     parser.add_argument("--batch_size", type=int, default=8, help="Number of lines to process at once")
     parser.add_argument("--debug", action="store_true", help="Save cropped images for debugging")
