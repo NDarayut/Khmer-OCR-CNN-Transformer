@@ -34,4 +34,8 @@ packages = ["detection", "recognition"]
 py-modules = ["ocr_engine", "textline_detection"]
 
 [tool.setuptools.package-data]
-"*" = ["*.json", "*.pth", "*.yaml"]
+"detection" = ["det-b0/*"]
+"recognition" = ["weight/*", "model/*", "*.json"]
+
+[tool.setuptools.package-data]
+"*" = true
