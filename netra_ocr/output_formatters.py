@@ -688,6 +688,212 @@ def save_docx(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  DOCX — Flow layout (no text boxes)
+#
+#  What this preserves vs the text-box approach
+#  ─────────────────────────────────────────────
+#  Preserved:
+#    ✓ Reading order (top-to-bottom from Surya bboxes)
+#    ✓ Semantic structure via Word styles (Title, Heading 1, Normal, List…)
+#    ✓ Navigation Pane / Outline view in Word
+#    ✓ Automatic Table of Contents generation
+#    ✓ Fully selectable, editable, searchable text
+#    ✓ Clean copy-paste (correct order, no box artefacts)
+#    ✓ Khmer font specified per-run so Word renders correct shaping
+#    ✓ Visual segments (Table / Picture / Formula) as inline images
+#    ✓ Re-flows correctly when the user edits content
+#
+#  NOT preserved:
+#    ✗ Exact spatial/pixel positions from the source scan
+#    ✗ Multi-column layout  (would require a table grid — very fragile)
+#    ✗ Precise horizontal indentation of individual lines
+#
+#  Label → Word style mapping
+#  ──────────────────────────
+#  Surya label       Word style       Effect in Word
+#  ─────────────────────────────────────────────────
+#  Title             Title            Large bold, centred
+#  Section-header    Heading 1        Outline level 1
+#  Page-header       Heading 2        Outline level 2
+#  Text              Normal           Body paragraph
+#  List-item         List Bullet      Bulleted list
+#  Caption           Caption          Small italic, below image
+#  Footnote          Footnote Text    Small, indented
+#  Page-footer       Footer           (appended as normal paragraph)
+#  Picture/Table/    — (inline img)   Inline image sized to content width
+#  Formula
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Surya label → (Word style name, alignment)
+_LABEL_TO_STYLE: dict = {
+    "Title":          ("Title",      "CENTER"),
+    "Section-header": ("Heading 1",  "LEFT"),
+    "Page-header":    ("Heading 2",  "CENTER"),
+    "Text":           ("Normal",     "LEFT"),
+    "List-item":      ("List Bullet","LEFT"),
+    "Caption":        ("Caption",    "CENTER"),
+    "Footnote":       ("Normal",     "LEFT"),   # Footnote Text absent in default docs
+    "Page-footer":    ("Normal",     "LEFT"),
+}
+_DEFAULT_STYLE = ("Normal", "LEFT")
+
+
+def save_docx_flow(
+    segments: List[dict],
+    output_path: str,
+    image_size: Tuple[int, int],
+) -> None:
+    """
+    Write a flow-layout DOCX.
+
+    Every segment becomes a native Word paragraph in reading order.
+    Text segments use mapped paragraph styles.
+    Visual segments (Table / Picture / Formula) are embedded as inline images
+    scaled to the content column width, followed by a Caption paragraph if
+    the next segment is a Caption.
+    """
+    try:
+        from docx import Document
+        from docx.shared import Pt, Cm, Emu, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml.ns import qn
+        import lxml.etree as etree
+    except ImportError:
+        raise ImportError("pip install python-docx")
+
+    img_w, img_h = image_size
+
+    # ── document setup ─────────────────────────────────────────────────────
+    doc = Document()
+    sec = doc.sections[0]
+
+    # A4 page with 2.54 cm margins
+    PAGE_W  = 11_906_400        # EMU
+    PAGE_H  = 16_838_400
+    MARGIN  = 1_440_000         # 2.54 cm ≈ standard Word default
+    sec.page_width    = Emu(PAGE_W)
+    sec.page_height   = Emu(PAGE_H)
+    sec.left_margin   = sec.right_margin  = Emu(MARGIN)
+    sec.top_margin    = sec.bottom_margin = Emu(MARGIN)
+
+    CONTENT_W_EMU = PAGE_W - 2 * MARGIN   # usable content width in EMU
+    CONTENT_W_CM  = CONTENT_W_EMU / 914_400 * 2.54   # in cm
+
+    # Remove the default blank paragraph Word always adds
+    for p in doc.paragraphs:
+        p._element.getparent().remove(p._element)
+
+    # ── override built-in Heading styles with Khmer font ──────────────────
+    khmer_font = _DOCX_KHMER_FONTS[0]   # "Khmer UI" on Windows
+
+    def _set_run_khmer(run, font_size_pt: float,
+                       bold: bool = False, italic: bool = False) -> None:
+        """Apply Khmer font + language hint to a run."""
+        run.font.name          = khmer_font
+        run.font.size          = Pt(font_size_pt)
+        run.font.bold          = bold
+        run.font.italic        = italic
+        # Mark the run as complex-script Khmer so Word uses the cs font
+        rpr = run._r.get_or_add_rPr()
+        # rFonts — set all four slots using namespace-expanded names (lxml requires this)
+        rfonts = rpr.find(qn("w:rFonts"))
+        if rfonts is None:
+            rfonts = etree.SubElement(rpr, qn("w:rFonts"))
+        for attr in ("w:ascii", "w:hAnsi", "w:cs", "w:eastAsia"):
+            rfonts.set(qn(attr), khmer_font)
+        # Language hint
+        lang = rpr.find(qn("w:lang"))
+        if lang is None:
+            lang = etree.SubElement(rpr, qn("w:lang"))
+        lang.set(qn("w:bidi"), "km")
+
+    # Font sizes by label (pt)
+    _FONT_SIZES: dict = {
+        "Title":          22.0,
+        "Section-header": 16.0,
+        "Page-header":    13.0,
+        "Text":           11.0,
+        "List-item":      11.0,
+        "Caption":         9.0,
+        "Footnote":        9.0,
+        "Page-footer":     9.0,
+    }
+    _DEFAULT_FONT_SIZE = 11.0
+
+    # Alignment map
+    _ALIGN = {
+        "CENTER": WD_ALIGN_PARAGRAPH.CENTER,
+        "LEFT":   WD_ALIGN_PARAGRAPH.LEFT,
+        "RIGHT":  WD_ALIGN_PARAGRAPH.RIGHT,
+    }
+
+    # ── helpers ────────────────────────────────────────────────────────────
+    def _add_text_paragraph(text: str, label: str) -> None:
+        style_name, align_key = _LABEL_TO_STYLE.get(label, _DEFAULT_STYLE)
+        font_pt = _FONT_SIZES.get(label, _DEFAULT_FONT_SIZE)
+        bold    = label in BOLD_LABELS
+        italic  = label in ITALIC_LABELS
+
+        # Ensure the style exists; fall back to Normal if not
+        try:
+            p = doc.add_paragraph(style=style_name)
+        except KeyError:
+            p = doc.add_paragraph(style="Normal")
+
+        p.alignment = _ALIGN.get(align_key, WD_ALIGN_PARAGRAPH.LEFT)
+        # Zero out paragraph spacing for compact layout
+        p.paragraph_format.space_before = Pt(2)
+        p.paragraph_format.space_after  = Pt(2)
+
+        run = p.add_run(text)
+        _set_run_khmer(run, font_pt, bold=bold, italic=italic)
+
+    def _add_image_paragraph(crop, label: str, source_bbox) -> None:
+        """Embed crop as inline image, scaled to content width."""
+        x1, y1, x2, y2 = source_bbox
+        src_w = max(1, x2 - x1)
+        src_h = max(1, y2 - y1)
+        aspect = src_h / src_w
+
+        # Scale to content column width (or narrower if the source was narrow)
+        src_frac = src_w / img_w          # fraction of page width the region used
+        tgt_w_cm = min(CONTENT_W_CM, CONTENT_W_CM * src_frac * 1.05)
+        tgt_h_cm = tgt_w_cm * aspect
+
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(4)
+        p.paragraph_format.space_after  = Pt(4)
+
+        import io as _io
+        buf = _io.BytesIO()
+        crop.convert("RGB").save(buf, "PNG")
+        buf.seek(0)
+        run = p.add_run()
+        run.add_picture(buf, width=Cm(tgt_w_cm), height=Cm(tgt_h_cm))
+
+    # ── main loop ──────────────────────────────────────────────────────────
+    for seg in segments:
+        label = seg.get("label", "Text")
+
+        if seg["type"] == "image":
+            crop = seg.get("crop")
+            bbox = seg.get("bbox")
+            if crop is None or bbox is None:
+                continue
+            _add_image_paragraph(crop, label, bbox)
+
+        else:
+            text = seg["text"].strip()
+            if not text:
+                continue
+            _add_text_paragraph(text, label)
+
+    doc.save(output_path)
+    print(f"[Formatter] DOCX (flow) → {output_path}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Dispatcher
 # ══════════════════════════════════════════════════════════════════════════════
 _FORMAT_MAP = {
@@ -696,9 +902,10 @@ _FORMAT_MAP = {
     ".html": save_html,
     ".htm":  save_html,
     ".pdf":  save_pdf,
-    ".docx": save_docx,
+    ".docx": save_docx,        # default: floating text boxes (spatial layout)
+    # save_docx_flow is selected via save_output(..., docx_flow=True)
 }
-SUPPORTED_FORMATS = list(_FORMAT_MAP.keys())
+SUPPORTED_FORMATS = [".txt", ".md", ".html", ".pdf", ".docx"]
 
 
 def save_output(
@@ -706,12 +913,34 @@ def save_output(
     output_path: str,
     image_size: Optional[Tuple[int, int]] = None,
     image_path: Optional[str] = None,
+    docx_flow: bool = False,
 ) -> None:
+    """
+    Dispatch to the right formatter.
+
+    Args:
+        segments:    Segment list from the OCR pipeline.
+        output_path: Destination file path; extension selects format.
+        image_size:  (width, height) of the source image in pixels.
+                     Required for html / pdf / docx.
+        image_path:  Path to the original source image.
+                     Used by save_pdf for the background layer.
+        docx_flow:   When True and the output is a .docx file, use the
+                     flow-paragraph layout (save_docx_flow) instead of
+                     the default text-box layout (save_docx).
+                       False (default) → floating text boxes, exact spatial layout
+                       True            → Word paragraph styles, logical structure,
+                                         Navigation Pane, TOC support, editable flow
+    """
     ext = Path(output_path).suffix.lower()
     fn  = _FORMAT_MAP.get(ext)
     if fn is None:
         print(f"[Formatter] Unknown extension '{ext}' — falling back to .txt")
         fn, output_path = save_txt, str(Path(output_path).with_suffix(".txt"))
+
+    # Override .docx mapping when flow layout is requested
+    if ext == ".docx" and docx_flow:
+        fn = save_docx_flow
 
     import inspect
     sig_params = inspect.signature(fn).parameters

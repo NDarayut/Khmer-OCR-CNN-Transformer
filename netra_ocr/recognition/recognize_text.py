@@ -20,7 +20,7 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 # GLOBAL SETTINGS & STATE
 # ==============================================================================
 # Define defaults here so you don't have to pass them every time
-DEFAULT_MODEL_PATH = os.path.join(CURRENT_DIR, "weight", "khmerocr.pth")
+DEFAULT_MODEL_PATH = os.path.join(CURRENT_DIR, "weight", "khmerocr_epoch250.pth")
 DEFAULT_VOCAB_PATH = os.path.join(CURRENT_DIR, "char2idx_new.json")
 
 # Global variable to hold the model in memory (Singleton)

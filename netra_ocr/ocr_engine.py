@@ -71,17 +71,21 @@ class KhmerOCRPipeline:
         padding: int = 8,
         beam_width: int = 1,
         batch_size: int = 8,
+        docx_flow: bool = False,
     ) -> str:
         """
         Run the full OCR pipeline.
 
-        Each element in the page becomes one of:
-          • text segment  — has "text" (OCR result) + "crop" (pixel image)
-          • image segment — has "crop" only  (Table / Picture / Formula)
-
-        Layout-preserving outputs (html/pdf/docx) use the crop images so
-        the result is visually identical to the source regardless of font
-        availability.
+        Args:
+            image_path:  Source image.
+            output_path: Destination file; extension selects format.
+            save_debug:  Write per-element debug crops.
+            padding:     Pixel padding around text-line crops.
+            beam_width:  CTC beam width.
+            batch_size:  Recognition batch size.
+            docx_flow:   When True and output is .docx, use flow-paragraph
+                         layout (Word styles, Navigation Pane, editable flow)
+                         instead of the default floating text-box layout.
 
         Returns:
             Plain newline-joined OCR text (backward-compatible).
@@ -191,7 +195,8 @@ class KhmerOCRPipeline:
 
         if output_path:
             print(f"\nStep 3: Saving → {output_path}")
-            save_output(segments, output_path, image_size=image_size, image_path=image_path)
+            save_output(segments, output_path, image_size=image_size,
+                        image_path=image_path, docx_flow=docx_flow)
 
         return final_text
 
@@ -286,6 +291,9 @@ def main():
     parser.add_argument("--beam",       type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--debug",      action="store_true")
+    parser.add_argument("--docx-flow",  action="store_true", dest="docx_flow",
+                        help="Use flow-paragraph DOCX layout (Word styles, "
+                             "Navigation Pane) instead of text boxes")
     args = parser.parse_args()
 
     try:
@@ -297,6 +305,7 @@ def main():
             padding     = args.padding,
             beam_width  = args.beam,
             batch_size  = args.batch_size,
+            docx_flow   = args.docx_flow,
         )
     except Exception as exc:
         print(f"\nPipeline error: {exc}")

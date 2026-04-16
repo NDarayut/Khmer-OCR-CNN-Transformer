@@ -8,3 +8,5 @@ torch
 torchvision
 reportlab
 python-docx
+playwright
+weasyprint
