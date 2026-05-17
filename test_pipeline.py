@@ -5,11 +5,11 @@ pipeline = KhmerOCRPipeline(engine="surya")
 
 # 2. Call the function
 result_text = pipeline.process_image(
-    image_path="id_card.png",
-    padding=4,
+    image_path="test_doc_2.png",
+    padding=2,
     beam_width=1,
     batch_size=16,
-    output_path="id_card.txt",
+    output_path="test_doc_2.txt",
     docx_flow=False,
 )
 

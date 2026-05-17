@@ -189,13 +189,13 @@ netra_ocr --image path/to/your/image.jpg --output result.txt
 #### Advanced CLI Examples
 ```bash
 # Generate a layout-preserving PDF
-netra_ocr --image scan.jpg --output result.pdf
+netra_ocr --image scan.jpg --padding 2 --output result.pdf
 
 # Generate an editable Word doc with Flow-Paragraphs (Word Styles)
-netra_ocr --image scan.jpg --output result.docx --docx-flow --engine custom
+netra_ocr --image scan.jpg --padding 2 --output result.docx --docx-flow --engine custom
 
 # High-accuracy mode with debugging
-netra_ocr --image scan.jpg --beam 5 --batch_size 16 --debug
+netra_ocr --image scan.jpg --padding 2 --beam 5 --batch_size 16 --debug
 ```
 
 ### 2. Python API
@@ -212,7 +212,7 @@ pipeline = KhmerOCRPipeline(engine="surya")
 result_text = pipeline.process_image(
     image_path="document.png",
     output_path="document.pdf",  # Extension determines output format
-    padding=8,
+    padding=2,
     beam_width=1,
     batch_size=16,
     docx_flow=False,
@@ -232,7 +232,7 @@ print(result_text)
 | `image_path` | `str` | **Req** | Path to the input image file. |
 | `engine` | `str` | `surya` | `surya` (Layout + Textline detection) or `custom` (Trained `LayoutInference` model). |
 | `output_path` | `str` | `None` | Destination file. Extension selects format: `.txt`, `.md`, `.html`, `.pdf`, `.docx`. |
-| `padding` | `int` | `6` | Pixel padding added around each text line crop to improve recognition. |
+| `padding` | `int` | `1` | Pixel padding added around each text line crop to improve recognition. |
 | `beam_width` | `int` | `1` | `1` is Greedy Search (fast). Higher values increase accuracy but decrease speed. |
 | `batch_size` | `int` | `16` | Number of text lines to process in parallel. |
 | `docx_flow` | `bool` | `False` | For `.docx` only: Uses Word Styles/Heading logic instead of absolute text boxes. |
