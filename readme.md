@@ -167,34 +167,77 @@ pip install -v git+https://github.com/netra-ai-lab/Khmer-OCR-CNN-Transformer.git
 
 ---
 ## Inference Usage
-This pipeline performs end-to-end OCR by first detecting text lines using Surya and then recognizing characters using our custom CNN-Transformer model.
+This pipeline performs **layout-aware** Khmer OCR. It doesn't just extract text; it identifies document structures (Headers, Titles, Lists, Tables, and Pictures) and reconstructs them into various file formats.
 
 ![Inference Pipeline](/assets/inference-pipeline.jpg)
 
+### Supported Output Formats
+The pipeline automatically detects the desired output format based on the file extension:
+- **Plain Text:** `.txt`, `.md` (OCR text only).
+- **Layout Preserving:** `.pdf`, `.html`, `.docx` (Uses original pixel crops to ensure 100% Khmer glyph accuracy without requiring specific fonts).
+
+---
 
 ## Local-Inference
+
 ### 1. Command Line Interface (CLI)
+The basic command runs the pipeline and outputs a text file:
 ```bash
-netra_ocr --image path/to/your/image.jpg
+netra_ocr --image path/to/your/image.jpg --output result.txt
 ```
 
-You can also adjust detection engine, adjust beam, and enable debugging
-
+#### Advanced CLI Examples
 ```bash
-netra_ocr --image document.png --engine surya --padding 10 --beam 1 --batch_size 16 --debug
+# Generate a layout-preserving PDF
+netra_ocr --image scan.jpg --output result.pdf
+
+# Generate an editable Word doc with Flow-Paragraphs (Word Styles)
+netra_ocr --image scan.jpg --output result.docx --docx-flow --engine custom
+
+# High-accuracy mode with debugging
+netra_ocr --image scan.jpg --beam 5 --batch_size 16 --debug
 ```
 
-### CLI Arguments
+### 2. Python API
+For integration into your own applications, use the `KhmerOCRPipeline` class. Initializing the class once will keep the models loaded in memory for faster subsequent processing.
+
+```python
+from netra_ocr.ocr_engine import KhmerOCRPipeline
+
+# 1. Initialize the pipeline (choose engine="surya" or engine="custom")
+pipeline = KhmerOCRPipeline(engine="surya")
+
+# 2. Process an image
+# Returns the plain text while also saving the formatted file to output_path
+result_text = pipeline.process_image(
+    image_path="document.png",
+    output_path="document.pdf",  # Extension determines output format
+    padding=8,
+    beam_width=1,
+    batch_size=16,
+    docx_flow=False,
+    save_debug=False
+)
+
+print("OCR Result:")
+print(result_text)
+```
+
+---
+
+### CLI & API Arguments
 
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--image` | `str` | **Required** | Path to the input image file. |
-| `--engine` | `str` | `surya` | Choice of detection engine: `surya` (optimized for textlines) or `custom` (trained layout model). |
-| `--output` | `str` | `ocr_result.txt` | Path to save the final recognized text. |
-| `--padding` | `int` | `6` | Pixels of white-space padding added around each text line. Higher padding can help recognition accuracy. |
-| `--beam` | `int` | `1` | Beam width for recognition. `1` is Greedy Search (fastest). Higher values increase accuracy but decrease speed. |
-| `--batch_size` | `int` | `8` | Number of text lines to process in parallel on the GPU/CPU. |
-| `--debug` | `flag` | `False` | If set, saves every cropped line image and its corresponding text into a `debug_<filename>_<engine>` folder for verification. |
+| `image_path` | `str` | **Req** | Path to the input image file. |
+| `engine` | `str` | `surya` | `surya` (Layout + Textline detection) or `custom` (Trained `LayoutInference` model). |
+| `output_path` | `str` | `None` | Destination file. Extension selects format: `.txt`, `.md`, `.html`, `.pdf`, `.docx`. |
+| `padding` | `int` | `6` | Pixel padding added around each text line crop to improve recognition. |
+| `beam_width` | `int` | `1` | `1` is Greedy Search (fast). Higher values increase accuracy but decrease speed. |
+| `batch_size` | `int` | `16` | Number of text lines to process in parallel. |
+| `docx_flow` | `bool` | `False` | For `.docx` only: Uses Word Styles/Heading logic instead of absolute text boxes. |
+| `save_debug` | `bool` | `False` | Saves every cropped element (lines, tables, images) into a `debug_` folder. |
+
 
 ## Huggingface-Inference
 1. Setup
