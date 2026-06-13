@@ -167,59 +167,65 @@ pip install -v git+https://github.com/netra-ai-lab/Khmer-OCR-CNN-Transformer.git
 
 ---
 ## Inference Usage
-This pipeline performs **layout-aware** Khmer OCR. It doesn't just extract text; it identifies document structures (Headers, Titles, Lists, Tables, and Pictures) and reconstructs them into various file formats.
-
-![Inference Pipeline](/assets/inference-pipeline.jpg)
+This pipeline performs Khmer OCR — it detects text lines (and optionally logos) in a document image and extracts the recognized text into your chosen output format.
 
 ### Supported Output Formats
-The pipeline automatically detects the desired output format based on the file extension:
-- **Plain Text:** `.txt`, `.md` (OCR text only).
-- **Layout Preserving:** `.pdf`, `.html`, `.docx` (Uses original pixel crops to ensure 100% Khmer glyph accuracy without requiring specific fonts).
+The output format is selected automatically from the file extension:
+- **`.txt` / `.md`** — plain UTF-8 text, one line per detected text line.
+- **`.docx`** — Word document: text lines as paragraphs, detected logos embedded as inline images.
+- **`.json`** — structured metadata including image size and per-line text + bounding boxes, suitable for reconstructing the document layout later.
+
+### Detectors
+| Detector | Description |
+| :--- | :--- |
+| `tesseract` (default) | Tesseract + graph clustering. No external model required. |
+| `yolo` | YOLOv2.6s trained on Khmer documents. Detects **class 0** (text lines) and **class 1** (logos). Logos are cropped and embedded in `.docx` output; other formats receive text only. |
 
 ---
 
 ## Local-Inference
 
 ### 1. Command Line Interface (CLI)
-The basic command runs the pipeline and outputs a text file:
 ```bash
 netra_ocr --image path/to/your/image.jpg --output result.txt
 ```
 
-#### Advanced CLI Examples
+#### More examples
 ```bash
-# Generate a layout-preserving PDF
-netra_ocr --image scan.jpg --padding 2 --output result.pdf
+# Save as Word document (YOLO: logos are embedded as images)
+netra_ocr --image scan.jpg --output result.docx --detector yolo
 
-# Generate an editable Word doc with Flow-Paragraphs (Word Styles)
-netra_ocr --image scan.jpg --padding 2 --output result.docx --docx-flow --engine custom
+# Save structured JSON (includes bbox per line, text only)
+netra_ocr --image scan.jpg --output result.json --detector yolo
 
-# High-accuracy mode with debugging
-netra_ocr --image scan.jpg --padding 2 --beam 5 --batch_size 16 --debug
+# Tune YOLO confidence threshold (default 0.25)
+netra_ocr --image scan.jpg --output result.txt --detector yolo --conf 0.4
+
+# High-accuracy mode with Tesseract detector
+netra_ocr --image scan.jpg --output result.txt --detector tesseract --beam 5 --batch_size 16
+
+# Debug mode — saves per-line .txt and logo .png files to a debug_ folder
+netra_ocr --image scan.jpg --output result.txt --detector yolo --debug
 ```
 
 ### 2. Python API
-For integration into your own applications, use the `KhmerOCRPipeline` class. Initializing the class once will keep the models loaded in memory for faster subsequent processing.
+Instantiate `KhmerOCRPipeline` once to keep models in memory for repeated calls.
 
 ```python
 from netra_ocr.ocr_engine import KhmerOCRPipeline
 
-# 1. Initialize the pipeline (choose engine="surya" or engine="custom")
-pipeline = KhmerOCRPipeline(engine="surya")
+# YOLO detector with custom confidence threshold
+pipeline = KhmerOCRPipeline(detector="yolo", conf=0.4)
 
-# 2. Process an image
-# Returns the plain text while also saving the formatted file to output_path
+# Process an image — returns recognized text; also writes the output file
 result_text = pipeline.process_image(
     image_path="document.png",
-    output_path="document.pdf",  # Extension determines output format
-    padding=2,
+    output_path="document.docx",   # Extension determines format
     beam_width=1,
-    batch_size=16,
-    docx_flow=False,
-    save_debug=False
+    batch_size=8,
+    save_debug=False,
 )
 
-print("OCR Result:")
 print(result_text)
 ```
 
@@ -229,14 +235,13 @@ print(result_text)
 
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `image_path` | `str` | **Req** | Path to the input image file. |
-| `engine` | `str` | `surya` | `surya` (Layout + Textline detection) or `custom` (Trained `LayoutInference` model). |
-| `output_path` | `str` | `None` | Destination file. Extension selects format: `.txt`, `.md`, `.html`, `.pdf`, `.docx`. |
-| `padding` | `int` | `1` | Pixel padding added around each text line crop to improve recognition. |
-| `beam_width` | `int` | `1` | `1` is Greedy Search (fast). Higher values increase accuracy but decrease speed. |
-| `batch_size` | `int` | `16` | Number of text lines to process in parallel. |
-| `docx_flow` | `bool` | `False` | For `.docx` only: Uses Word Styles/Heading logic instead of absolute text boxes. |
-| `save_debug` | `bool` | `False` | Saves every cropped element (lines, tables, images) into a `debug_` folder. |
+| `image_path` | `str` | **Required** | Path to the input image file. |
+| `detector` | `str` | `tesseract` | Text detector: `tesseract` or `yolo`. |
+| `conf` | `float` | `0.25` | YOLO confidence threshold. Only applies when `detector="yolo"`. |
+| `output_path` | `str` | `None` | Destination file. Extension selects format: `.txt`, `.md`, `.json`, `.docx`. |
+| `beam_width` | `int` | `1` | `1` = greedy search (fast). Higher values improve accuracy at the cost of speed. |
+| `batch_size` | `int` | `8` | Number of text lines processed per recognition batch. |
+| `save_debug` | `bool` | `False` | Saves per-segment debug files (`.txt` for text, `.png` for logos) into a `debug_<name>/` folder. |
 
 
 ## Huggingface-Inference
