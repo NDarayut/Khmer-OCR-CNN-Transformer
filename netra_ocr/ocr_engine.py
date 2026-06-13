@@ -36,9 +36,14 @@ from output_formatters import save_output, SUPPORTED_FORMATS
 
 
 class KhmerOCRPipeline:
-    def __init__(self, detector: str = "tesseract", conf: float | None = None):
+    def __init__(self, detector: str = "tesseract", conf: float | None = None,
+                 pad: int | None = None):
         print(f"Initializing detector: {detector}")
-        kwargs = {"conf": conf} if conf is not None else {}
+        kwargs = {}
+        if conf is not None:
+            kwargs["conf"] = conf
+        if pad is not None:
+            kwargs["pad"] = pad
         self.detector = get_detector(detector, **kwargs)
 
     def process_image(
@@ -48,17 +53,28 @@ class KhmerOCRPipeline:
         save_debug: bool = False,
         beam_width: int = 1,
         batch_size: int = 8,
-    ) -> str:
+        return_segments: bool = False,
+    ):
+        """Run detection + recognition on an image.
+
+        Returns the joined text by default. When ``return_segments=True`` returns
+        ``(text, meta)`` where ``meta`` carries the original image size and a
+        JSON-serializable list of per-region segments (bbox + text/label) for the
+        web overlay.
+        """
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Image not found: {image_path}")
 
         img = Image.open(image_path).convert("RGB")
         image_size = img.size
 
+        def _empty_meta():
+            return {"image_size": [image_size[0], image_size[1]], "segments": []}
+
         # STEP 1: DETECTION
         detected_lines = self.detector.detect(image_path)
         if not detected_lines:
-            return ""
+            return ("", _empty_meta()) if return_segments else ""
 
         # STEP 2: SEPARATE BY LABEL
         text_lines = [dl for dl in detected_lines if dl.label == "text"]
@@ -85,6 +101,17 @@ class KhmerOCRPipeline:
 
         if output_path:
             save_output(segments, output_path, image_path=image_path, image_size=image_size)
+
+        if return_segments:
+            overlay_segments = []
+            for s in segments:
+                x1, y1, x2, y2 = s["bbox"]
+                item = {"type": s["type"], "bbox": [int(x1), int(y1), int(x2), int(y2)]}
+                if s["type"] == "text":
+                    item["text"] = s["text"]
+                overlay_segments.append(item)
+            meta = {"image_size": [image_size[0], image_size[1]], "segments": overlay_segments}
+            return final_text, meta
 
         return final_text
 
@@ -129,13 +156,15 @@ def main():
                         help="Extension determines format: .txt .md .json .docx")
     parser.add_argument("--conf",       type=float, default=None,
                         help="YOLO confidence threshold (default 0.25). Only applies to --detector yolo.")
+    parser.add_argument("--pad",        type=int, default=None,
+                        help="Pixels to pad each bbox on all sides (default 4). Only applies to --detector yolo.")
     parser.add_argument("--beam",       type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--debug",      action="store_true")
     args = parser.parse_args()
 
     try:
-        pipeline = KhmerOCRPipeline(detector=args.detector, conf=args.conf)
+        pipeline = KhmerOCRPipeline(detector=args.detector, conf=args.conf, pad=args.pad)
         pipeline.process_image(
             image_path  = args.image,
             output_path = args.output,

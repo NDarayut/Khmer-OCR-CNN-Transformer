@@ -1,3 +1,4 @@
+flask
 pillow==9.5.0
 numpy
 opencv-python

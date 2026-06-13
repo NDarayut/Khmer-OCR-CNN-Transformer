@@ -9,12 +9,14 @@ _WEIGHTS_PATH = os.path.join(
 
 
 class YoloDetector(BaseTextDetector):
-    def __init__(self, weights: str = _WEIGHTS_PATH, conf: float = 0.25, iou: float = 0.7):
+    def __init__(self, weights: str = _WEIGHTS_PATH, conf: float = 0.25, iou: float = 0.7,
+                 pad: int = 2):
         from ultralytics import YOLO
         print(f"Loading YOLO weights: {weights}")
         self._model = YOLO(weights)
         self._conf = conf
         self._iou  = iou
+        self._pad  = max(0, int(pad))
 
     def detect(self, image_path: str) -> list:
         results = self._model.predict(
@@ -33,8 +35,8 @@ class YoloDetector(BaseTextDetector):
             classes = result.boxes.cls.cpu().numpy()    # (N,)  integer class ids
             for box, cls_id in zip(boxes, classes):
                 x1, y1, x2, y2 = (
-                    max(0, int(box[0])), max(0, int(box[1])),
-                    min(img_w, int(box[2])), min(img_h, int(box[3])),
+                    max(0, int(box[0]) - self._pad), max(0, int(box[1]) - self._pad),
+                    min(img_w, int(box[2]) + self._pad), min(img_h, int(box[3]) + self._pad),
                 )
                 if x2 - x1 < 4 or y2 - y1 < 4:
                     continue

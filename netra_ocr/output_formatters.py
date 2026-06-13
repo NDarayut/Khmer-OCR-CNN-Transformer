@@ -49,7 +49,7 @@ def save_output(
             f"Unsupported format '{ext}'. Supported: {sorted(SUPPORTED_FORMATS)}"
         )
     fn(segments, output_path, image_path=image_path, image_size=image_size)
-    print(f"  Saved {ext} output → {output_path}")
+    print(f"  Saved {ext} output -> {output_path}")
 
 
 # ──────────────────────────────────────────────────────────────────────
