@@ -179,7 +179,7 @@ The output format is selected automatically from the file extension:
 | Detector | Description |
 | :--- | :--- |
 | `tesseract` (default) | Tesseract + graph clustering. No external model required. |
-| `yolo` | YOLOv2.6s trained on Khmer documents. Detects **class 0** (text lines) and **class 1** (logos). Logos are cropped and embedded in `.docx` output; other formats receive text only. |
+| `yolo` | YOLOv26s trained on Khmer documents. Detects **class 0** (text lines) and **class 1** (logos). Logos are cropped and embedded in `.docx` output; other formats receive text only. |
 
 ---
 
