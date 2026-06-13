@@ -10,3 +10,4 @@ reportlab
 python-docx
 playwright
 weasyprint
+ultralytics

@@ -1,17 +1,15 @@
 from netra_ocr.ocr_engine import KhmerOCRPipeline
 
-# 1. Initialize the pipeline (do this once to keep models in memory)
-pipeline = KhmerOCRPipeline(engine="surya")
+# Initialize the pipeline
+pipeline = KhmerOCRPipeline(detector="yolo", conf=0.4)
 
-# 2. Call the function
+# Process an image — returns plain text and writes the output file
 result_text = pipeline.process_image(
-    image_path="test_doc_2.png",
-    padding=2,
+    image_path="./test_images/test_image.jpg",
+    output_path="document.docx",   # Extension determines format
     beam_width=1,
     batch_size=16,
-    output_path="test_doc_2.txt",
-    docx_flow=False,
+    save_debug=False,
 )
 
-print("OCR Result:")
 print(result_text)

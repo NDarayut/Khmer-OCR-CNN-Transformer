@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/netra.png" width="60%" alt="Netra Lab" />
+  <img src="assets/netra-logo-transparent-new.png" width="60%" alt="Netra Lab" />
 </div>
 
 <hr>
@@ -72,7 +72,7 @@ To handle variable-length text lines without aggressive resizing, we employ a "C
 ### 2. Model Architecture: Squeeze-and-Excitation Transformer Network
 Our proposed architecture integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
 
-![Model Architecture](/assets/proposed-architecture.png)
+![Model Architecture](/assets/ocr-architecture.png)
 
 1.  **Squeeze-and-Excitation Network (SE-VGG):**
     *   A modified VGG backbone with **1D Squeeze-and-Excitation** blocks after convolutional layer **3**, **4**, and **5**.
