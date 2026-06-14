@@ -1,12 +1,3 @@
-flask
-pillow==9.5.0
-numpy
-opencv-python
-tqdm
-datasets
-transformers
-torch
-torchvision
-python-docx
-ultralytics
-pytesseract
+# Development install: the package plus all optional extras.
+# For a normal install just use:  pip install netra-ocr
+-e .[tesseract,web]

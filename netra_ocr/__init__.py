@@ -1,0 +1,11 @@
+"""Netra OCR — Khmer optical character recognition.
+
+A Squeeze-and-Excitation Transformer network for Khmer text-line recognition,
+paired with pluggable text detectors (YOLO, Tesseract, classic CV).
+"""
+
+__version__ = "0.1.0"
+
+from .ocr_engine import KhmerOCRPipeline
+
+__all__ = ["KhmerOCRPipeline", "__version__"]
