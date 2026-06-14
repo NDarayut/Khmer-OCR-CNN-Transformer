@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/netra-logo-transparent-new.png" width="60%" alt="Netra Lab" />
+  <img src="https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/netra-logo-transparent-new.png" width="60%" alt="Netra Lab" />
 </div>
 
 <hr>
@@ -19,7 +19,7 @@
 </h2>
 
 <p align="center">
-<img src="assets/benchmark.png" style="width: 1000px" align=center>
+<img src="https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/benchmark.png" style="width: 1000px" align=center>
 </p>
 
 <p align="center">
@@ -58,7 +58,7 @@ We generated **200,000 synthetic images** to ensure robustness against font vari
 | **Legal Documents** | Real | 227 | High variation in degradation, illumination, and distortion. |
 | **Printed Words** | Synthetic | 1,000 | Short, isolated words in 10 different fonts. |
 
-![Dataset Overview](/assets/dataset-overview.png)
+![Dataset Overview](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/dataset-overview.png)
 ---
 
 ## Methodology & Architecture
@@ -72,13 +72,13 @@ To handle variable-length text lines without aggressive resizing, we employ a "C
 ### 2. Model Architecture: Squeeze-and-Excitation Transformer Network
 Our proposed architecture integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
 
-![Model Architecture](/assets/ocr-architecture.png)
+![Model Architecture](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/ocr-architecture.png)
 
 1.  **Squeeze-and-Excitation Network (SE-VGG):**
     *   A modified VGG backbone with **1D Squeeze-and-Excitation** blocks after convolutional layer **3**, **4**, and **5**.
     *   Unlike standard SE, these blocks use **vertical pooling** to refine feature channels while strictly preserving the horizontal width (sequence information).
 
-        ![SE Module](</assets/Sequence Attention CNN.png>)
+        ![SE Module](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/Sequence%20Attention%20CNN.png)
 
 
 2.  **Patch Module:**
@@ -96,7 +96,7 @@ Our proposed architecture integrates sequence-aware attention and recurrent smoo
     *   A Bidirectional LSTM layer that processes the merged sequence.
     *   **Purpose:** Bridges the "context gap" between independent chunks by smoothing boundary discontinuities, ensuring a seamless flow of information across the text line.
 
-        ![Context Smoothing Module](/assets/BiLSTM-Module.png)
+        ![Context Smoothing Module](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/BiLSTM-Module.png)
 
 6.  **Transformer Decoder:**
     *   Generates the final Khmer character sequence using the globally smoothed context.
@@ -136,10 +136,10 @@ TABLE 1: Character Error Rate (CER in %) results on the KHOB, Legal Documents, a
 ## Qualitative Analysis
 
 TABLE 2: Failure cases on KHOB, Legal Document, and Printed Word dataset
-![failure cases](/assets/failure_cases.png)
+![failure cases](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/failure_cases.png)
 
 TABLE 3: Example of proposed, and baseline model compared with the ground truth. Errors in the predictions are highlighted in red
-![success cases](/assets/sucess_case.png)
+![success cases](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/sucess_case.png)
 
 **Key Findings:**
 *   **The Proposed Model** achieves the highest accuracy on long, continuous text lines (KHOB), demonstrating that the **BiLSTM Context Smoother** effectively resolves the chunk boundary discontinuities that limit standard Transformer baselines.
