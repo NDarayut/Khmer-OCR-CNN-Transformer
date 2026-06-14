@@ -1,9 +1,11 @@
 from .tesseract import TesseractDetector
 from .yolo import YoloDetector
+from .legacy import LegacyDetector
 
 DETECTOR_REGISTRY = {
     "tesseract": TesseractDetector,
     "yolo":      YoloDetector,
+    "legacy":    LegacyDetector,
 }
 
 

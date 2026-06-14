@@ -161,13 +161,10 @@ function wireHoverLink() {
 
 // ── Detector toggle ───────────────────────────────────────────────────────
 detectorSel.addEventListener("change", () => {
-  if (detectorSel.value === "yolo") {
-    show(confRow);
-    show(padRow);
-  } else {
-    hide(confRow);
-    hide(padRow);
-  }
+  const isYolo = detectorSel.value === "yolo";
+  const needsPad = isYolo || detectorSel.value === "legacy";
+  if (isYolo) show(confRow); else hide(confRow);
+  if (needsPad) show(padRow); else hide(padRow);
 });
 
 // ── File selection ────────────────────────────────────────────────────────
@@ -244,7 +241,7 @@ runBtn.addEventListener("click", () => {
     detector: detectorSel.value,
     output_format: formatSel.value,
     conf: detectorSel.value === "yolo" ? parseFloat(confInput.value) : null,
-    pad: detectorSel.value === "yolo" ? parseInt(padInput.value, 10) : null,
+    pad: (detectorSel.value === "yolo" || detectorSel.value === "legacy") ? parseInt(padInput.value, 10) : null,
   };
 
   fetch("/run", {

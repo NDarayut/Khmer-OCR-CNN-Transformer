@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from .postprocess import clean_text
 
 class Tokenizer:
     """Handles mapping between characters and integer IDs."""
@@ -12,6 +13,7 @@ class Tokenizer:
         self.sos_idx = self.char2idx.get("<sos>", 1)
         self.eos_idx = self.char2idx.get("<eos>", 2)
         self.pad_idx = self.char2idx.get("<pad>", 0)
+        self.unk_idx = self.char2idx.get("<unk>", 3)
 
     def _load_vocab(self) -> tuple[dict, dict]:
         if not self.char2idx_path.exists():
@@ -31,8 +33,17 @@ class Tokenizer:
                 continue
             if idx == self.eos_idx:
                 break
-            result.append(self.idx2char.get(idx, ""))
-        return "".join(result)
+            if idx == self.unk_idx:
+                result.append(" ")
+                continue
+            char = self.idx2char.get(idx, "")
+            # Skip any other special token that maps back to a "<...>" string
+            # so it is never emitted literally.
+            if len(char) > 1 and char.startswith("<") and char.endswith(">"):
+                result.append(" ")
+                continue
+            result.append(char)
+        return clean_text("".join(result))
 
     def __len__(self):
         return len(self.char2idx)

@@ -96,11 +96,11 @@ def run():
     conf_raw = body.get("conf")
     pad_raw = body.get("pad")
 
-    if detector not in ("tesseract", "yolo"):
+    if detector not in ("tesseract", "yolo", "legacy"):
         return jsonify(ok=False, error=f"Unknown detector '{detector}'."), 400
 
     conf = float(conf_raw) if detector == "yolo" and conf_raw is not None else None
-    pad = int(pad_raw) if detector == "yolo" and pad_raw is not None else None
+    pad = int(pad_raw) if detector in ("yolo", "legacy") and pad_raw is not None else None
 
     image_path = _safe_path(UPLOAD_FOLDER, upload_id)
     if image_path is None or not image_path.exists():

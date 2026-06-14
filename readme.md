@@ -179,7 +179,11 @@ The output format is selected automatically from the file extension:
 | Detector | Description |
 | :--- | :--- |
 | `tesseract` (default) | Tesseract + graph clustering. No external model required. |
-| `yolo` | YOLOv26s trained on Khmer documents. Detects **class 0** (text lines) and **class 1** (logos). Logos are cropped and embedded in `.docx` output; other formats receive text only. |
+| `yolo` | YOLOv26s trained on Khmer documents. Detects **class 0** (text lines) and **class 1** (logos). Logos are cropped and embedded in `.docx` output; other formats receive text only. Text boxes are refined after detection to horizontally cover the full text line (content-aware, on by default). |
+| `legacy` | Classic CV detector using MSER, gradient analysis, and multi-channel binarization. No GPU or Tesseract installation required. Accepts optional `pad` parameter. |
+
+### Recognition Post-Processing
+Raw decoder output is cleaned of common gibberish (control/replacement characters and runaway repeated characters, clusters, or tokens from decoder loops). Machine-readable zone (MRZ) lines on passports/ID cards are auto-detected and exempted, so legitimate repeated `<` filler (e.g. `IDKHM1011052875<<<<<<<<`) is preserved intact.
 
 ---
 
@@ -192,6 +196,12 @@ netra_ocr --image path/to/your/image.jpg --output result.txt
 
 #### More examples
 ```bash
+# Classic CV detector — no GPU or Tesseract required
+netra_ocr --image scan.jpg --output result.txt --detector legacy
+
+# Legacy with custom padding
+netra_ocr --image scan.jpg --output result.txt --detector legacy --pad 4
+
 # Save as Word document (YOLO: logos are embedded as images)
 netra_ocr --image scan.jpg --output result.docx --detector yolo
 
@@ -229,6 +239,17 @@ result_text = pipeline.process_image(
 print(result_text)
 ```
 
+### 3. Web App (Browser UI)
+A Flask web interface ([`app.py`](app.py)) for uploading an image, picking a detector/output format, and viewing the recognized text with bounding-box overlays in the browser.
+
+```bash
+pip install flask
+python app.py
+# open http://localhost:5000
+```
+
+Upload a JPG/PNG/TIFF/BMP (max 20 MB), choose a detector (`tesseract`, `yolo`, or `legacy`) and output format (`.txt`, `.md`, `.json`, `.docx`), then run OCR and download the result. Pipelines are cached in memory per detector configuration for fast repeat runs.
+
 ---
 
 ### CLI & API Arguments
@@ -236,8 +257,9 @@ print(result_text)
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `image_path` | `str` | **Required** | Path to the input image file. |
-| `detector` | `str` | `tesseract` | Text detector: `tesseract` or `yolo`. |
+| `detector` | `str` | `tesseract` | Text detector: `tesseract`, `yolo`, or `legacy`. |
 | `conf` | `float` | `0.25` | YOLO confidence threshold. Only applies when `detector="yolo"`. |
+| `pad` | `int` | `None` (auto) | Pixels added around each detected box. Applies to `yolo` and `legacy` detectors. |
 | `output_path` | `str` | `None` | Destination file. Extension selects format: `.txt`, `.md`, `.json`, `.docx`. |
 | `beam_width` | `int` | `1` | `1` = greedy search (fast). Higher values improve accuracy at the cost of speed. |
 | `batch_size` | `int` | `8` | Number of text lines processed per recognition batch. |
