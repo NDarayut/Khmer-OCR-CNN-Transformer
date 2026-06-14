@@ -7,8 +7,6 @@ datasets
 transformers
 torch
 torchvision
-reportlab
 python-docx
-playwright
-weasyprint
 ultralytics
+pytesseract

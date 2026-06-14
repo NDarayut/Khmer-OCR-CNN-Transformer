@@ -91,7 +91,7 @@ def preview(upload_id: str):
 def run():
     body = request.get_json(silent=True) or {}
     upload_id = body.get("upload_id", "")
-    detector = body.get("detector", "tesseract")
+    detector = body.get("detector", "yolo")
     output_format = body.get("output_format", ".txt")
     conf_raw = body.get("conf")
     pad_raw = body.get("pad")

@@ -178,8 +178,8 @@ The output format is selected automatically from the file extension:
 ### Detectors
 | Detector | Description |
 | :--- | :--- |
-| `tesseract` (default) | Tesseract + graph clustering. No external model required. |
-| `yolo` | YOLOv26s trained on Khmer documents. Detects **class 0** (text lines) and **class 1** (logos). Logos are cropped and embedded in `.docx` output; other formats receive text only. Text boxes are refined after detection to horizontally cover the full text line (content-aware, on by default). |
+| `yolo` (default) | YOLOv26s trained on Khmer documents. Detects **class 0** (text lines) and **class 1** (logos). Logos are cropped and embedded in `.docx` output; other formats receive text only. Text boxes are refined after detection to horizontally cover the full text line (content-aware, on by default). |
+| `tesseract` | Tesseract + graph clustering. No external model required. |
 | `legacy` | Classic CV detector using MSER, gradient analysis, and multi-channel binarization. No GPU or Tesseract installation required. Accepts optional `pad` parameter. |
 
 ### Recognition Post-Processing
@@ -257,7 +257,7 @@ Upload a JPG/PNG/TIFF/BMP (max 20 MB), choose a detector (`tesseract`, `yolo`, o
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `image_path` | `str` | **Required** | Path to the input image file. |
-| `detector` | `str` | `tesseract` | Text detector: `tesseract`, `yolo`, or `legacy`. |
+| `detector` | `str` | `yolo` | Text detector: `yolo`, `tesseract`, or `legacy`. |
 | `conf` | `float` | `0.25` | YOLO confidence threshold. Only applies when `detector="yolo"`. |
 | `pad` | `int` | `None` (auto) | Pixels added around each detected box. Applies to `yolo` and `legacy` detectors. |
 | `output_path` | `str` | `None` | Destination file. Extension selects format: `.txt`, `.md`, `.json`, `.docx`. |

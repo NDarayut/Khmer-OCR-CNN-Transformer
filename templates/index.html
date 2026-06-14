@@ -68,19 +68,19 @@
           <label for="detector-select">Detector</label>
           <div class="select-wrap">
             <select id="detector-select">
-              <option value="tesseract" selected>Tesseract (default)</option>
-              <option value="yolo">YOLO</option>
+              <option value="yolo" selected>YOLO (default)</option>
+              <option value="tesseract">Tesseract</option>
               <option value="legacy">Legacy CV (no GPU)</option>
             </select>
           </div>
         </div>
 
-        <div class="field-row" id="conf-row" hidden>
+        <div class="field-row" id="conf-row">
           <label for="conf-input">YOLO confidence</label>
           <input type="number" id="conf-input" value="0.25" min="0.05" max="0.95" step="0.05">
         </div>
 
-        <div class="field-row" id="pad-row" hidden>
+        <div class="field-row" id="pad-row">
           <label for="pad-input">YOLO padding</label>
           <input type="number" id="pad-input" value="4" min="0" max="50" step="1">
         </div>

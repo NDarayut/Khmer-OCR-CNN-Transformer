@@ -6,8 +6,8 @@ Detection
 ---------
 Detectors are registered in netra_ocr/detectors/__init__.py and selected by name.
 Currently available:
-    tesseract  (default) — KhmerLineDetector built on Tesseract + graph clustering
-    yolo                 — YOLOv2.6s trained on Khmer documents (class 0: text, class 1: logo)
+    yolo       (default) — YOLOv2.6s trained on Khmer documents (class 0: text, class 1: logo)
+    tesseract            — KhmerLineDetector built on Tesseract + graph clustering
 
 Add a new detector by:
   1. Implementing BaseTextDetector in netra_ocr/detectors/<name>.py
@@ -36,7 +36,7 @@ from output_formatters import save_output, SUPPORTED_FORMATS
 
 
 class KhmerOCRPipeline:
-    def __init__(self, detector: str = "tesseract", conf: float | None = None,
+    def __init__(self, detector: str = "yolo", conf: float | None = None,
                  pad: int | None = None):
         print(f"Initializing detector: {detector}")
         kwargs = {}
@@ -150,8 +150,8 @@ def main():
         ),
     )
     parser.add_argument("--image",      required=True)
-    parser.add_argument("--detector",   default="tesseract",
-                        help="Text detector: tesseract | yolo")
+    parser.add_argument("--detector",   default="yolo",
+                        help="Text detector: yolo | tesseract | legacy")
     parser.add_argument("--output",     default="ocr_result.txt",
                         help="Extension determines format: .txt .md .json .docx")
     parser.add_argument("--conf",       type=float, default=None,
