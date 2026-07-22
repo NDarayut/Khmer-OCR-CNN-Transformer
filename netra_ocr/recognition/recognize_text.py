@@ -5,14 +5,7 @@ from .config import OCRConfig
 from .utils import setup_logging, autodetect_config
 from .cluster_tokenizer import ClusterTokenizer
 from .predictor import OCRPredictor
-try:
-    from .model.se_model import KhmerOCR as SE_KhmerOCR
-    from .model.vgg_model import KhmerOCR as VGG_KhmerOCR
-    from .model.resnet_model import KhmerOCR as ResNet_KhmerOCR
-
-except ImportError:
-    print("Error: 'se_model.py' must be in the same directory.")
-    sys.exit(1)
+from .model.model import KhmerOCR
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -52,13 +45,6 @@ def _get_predictor(model_path=None, vocab_path=None):
     model_path = model_path or _default_model_path()
     vocab_path = vocab_path or DEFAULT_VOCAB_PATH
 
-    if "vgg" in model_path.lower():
-        model = VGG_KhmerOCR
-    elif "resnet" in model_path.lower():
-        model = ResNet_KhmerOCR
-    else:
-        model = SE_KhmerOCR
-
     try:
         detected_cfg = autodetect_config(model_path)
         config = OCRConfig(**detected_cfg)
@@ -68,7 +54,7 @@ def _get_predictor(model_path=None, vocab_path=None):
             model_path=model_path,
             tokenizer=tokenizer,
             config=config,
-            model_class=model
+            model_class=KhmerOCR
         )
         return _PREDICTOR_INSTANCE
 
@@ -158,8 +144,8 @@ if __name__ == "__main__":
         
     ARGUMENTS:
         --image: Path to the input image (Required).
-        --model: Path to .pth file (Default: ./weight/...).
-        --vocab: Path to .json vocab (Default: char2idx.json).
+        --model: Path to .pth file (Default: auto-download from the HF model repo).
+        --vocab: Path to .json vocab (Default: char2idx_cluster.json).
         --beam: Beam width. Set to 1 for Greedy Search (Default: 3).
         --output: (Optional) Text file to save the result.
     

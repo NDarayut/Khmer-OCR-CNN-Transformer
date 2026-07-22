@@ -3,17 +3,17 @@ import torch.nn.functional as F
 import logging
 from pathlib import Path
 from .config import OCRConfig
-from .tokenizer import Tokenizer
+from .cluster_tokenizer import ClusterTokenizer
 from .preprocessor import ImagePreprocessor
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
 class OCRPredictor:
-    def __init__(self, 
-                 model_path: str | Path, 
-                 tokenizer: Tokenizer, 
-                 config: OCRConfig, 
+    def __init__(self,
+                 model_path: str | Path,
+                 tokenizer: ClusterTokenizer,
+                 config: OCRConfig,
                  model_class):
         
         self.cfg = config
