@@ -69,36 +69,37 @@ To handle variable-length text lines without aggressive resizing, we employ a "C
 *   **Chunking:** The image is split into overlapping chunks (Size: 48x100 px, Overlap: 16 px).
 
 ### 2. Model Architecture: Squeeze-and-Excitation Transformer Network
-Our proposed architecture integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
+Our proposed architecture (*see figure 2*) integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
 
 ![Model Architecture](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/ocr-architecture.png)
 
 <p><em>Figure 2: Overview of Netra-OCR architecture. The input image is first resized and chunked into fixed chunk of 48x100px with 16px overlaps between each chunk. Each chunk is processed by the Squeeze-and-Excitation network in parallel resulting in 512 feature maps of size 2x32px. Each feature maps are transformed into patch embedding with positional embedding. The Transformer encoder takes these embedding and output Vision Token. These token are merged, and processed by a Bidirectional LSTM layer before being concatenating and ultimately pass through the Transformer decoder which outputs each character cluster sequentially.</em></p>
 
-#### Squeeze-and-Excitation Network
+### Squeeze-and-Excitation Network
 
-[Explain Here]
+The backbone is composed of 5 blocks of convolution in the style of VGG that progressively extracts 64, 128, 256, and 512 channel feature maps, using height-only pooling in the later stages so horizontal (width) resolution, where character order lives, is preserved. After the deeper convolutional blocks, a **1D Squeeze-and-Excitation** (SE) module recalibrates the feature maps. Unlike the original SE block, which squeezes both spatial axes into a single per-channel descriptor, this variant averages only over height, leaving the width axis intact. This yields one channel-attention vector *per horizontal column*, so each part of the text line gets its own excitation weights, letting the network suppress noisy/background channels independently at each horizontal position instead of applying one global correction to the whole chunk. The gating vector is computed by a small bottleneck (reducing then restoring the channel dimension) with a ReLU and a Sigmoid, then used to rescale the feature map via element-wise multiplication. The backbone finishes with an adaptive average pooling step, producing a fixed-size feature map per chunk regardless of minor size variation.
 
 ![SE Module](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/Sequence%20Attention%20CNN.png)
+<p><em>Figure 3: The Squeeze-and-Excitation Network is composed of 5 blocks of convolution where block 3, 4, and 5 gets Squeeze-and-Excitation (SE) module implemented. Within each SE module, the feature map is first <b>squeezed</b> by averaging across the height axis only, collapsing each channel down to a single value per horizontal column while leaving the width axis untouched — producing a per-column channel descriptor rather than the single global descriptor a standard SE block would produce. This descriptor is then passed through the <b>excitation</b> gate: a small bottleneck that reduces the channel dimension, applies a ReLU, then restores it, followed by a sigmoid, applied independently at every column to produce a set of gate values between 0 and 1 for each channel at each horizontal position. Finally, in the <b>scale</b> step, the original feature map is rescaled column-by-column by multiplying it elementwise with these gate values, so every horizontal position in the text line gets its own learned channel weighting.</em></p>
 
+### Patch Module
 
-#### Patch Module
+The CNN's 2D feature map is converted into a sequence of patch embeddings, ViT-style. A small convolutional projection slides across the feature map, collapsing its height down to one while keeping the width axis intact, and maps each resulting column to the model's embedding dimension. The result is a flattened sequence of patch tokens, and a learnable positional embedding is added to each token so the encoder knows each patch's position within the chunk.
 
-[Explain Here]
+### Transformer Encoder
+Each chunk's patch sequence is passed through a standard Transformer encoder. Self-attention lets patches within the same chunk attend to one another, resolving local ambiguities (e.g. distinguishing visually similar sub-consonant stacks) using context from neighboring columns before the chunk's representation is finalized as a sequence of "vision tokens".
 
-#### Transformer Encoder
-[Explain Here]
+### Merging Module
+Because a text line is split into overlapping chunks, each chunk is encoded independently. The merging step concatenates the vision-token sequences of all chunks belonging to the same line back into one continuous sequence, pads sequences of different lengths within a batch, and builds a padding mask so the decoder can later ignore the padded positions. A second, *global* positional embedding is then added across the full merged sequence, separate from the per-chunk positional embedding used earlier, so the model can distinguish a token's position within the whole line, not just within its originating chunk.
 
-#### Merging Module
-[Explain Here]
-
-#### BiLSTM Context Smoother:**
-[Explain Here]
+### BiLSTM Context Smoother
+Encoding chunks independently means the seams where adjacent chunks overlap can be inconsistent, a character split across a chunk boundary may be represented differently depending on which chunk "sees" more of it. After merging, the full sequence is passed through a single-layer bidirectional LSTM. Its recurrent connections let information flow across chunk boundaries in both directions, smoothing the representation at the seams before decoding — effectively blending each chunk's context with its neighbors.
 
 ![Context Smoothing Module](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/BiLSTM-Module.png)
+<p><em>Figure 4: After the per-chunk vision tokens are concatenated into one continuous sequence, a single bidirectional LSTM layer sweeps across the full sequence in both directions. A forward pass reads the sequence left-to-right, carrying context from earlier chunks forward into later ones, while a backward pass reads it right-to-left, carrying context from later chunks back into earlier ones. The two directions' hidden states are concatenated at every position, so each token's final representation is informed by tokens on both sides of any chunk seam — resolving the discontinuity that arises when a character is split across two independently-encoded chunks.</em></p>
 
-#### Transformer Decoder
-[Explain Here]
+### Transformer Decoder
+A standard autoregressive Transformer decoder generates the output character-cluster sequence one token at a time. Target tokens are embedded and combined with a learned positional embedding, a causal mask prevents attending to future tokens, and cross-attention lets each decoding step attend over the smoothed encoder memory (respecting the padding mask from the merging step). A final linear projection maps the decoder's output to logits over the vocabulary.
 
 ---
 
