@@ -5,6 +5,7 @@ from pathlib import Path
 from .config import OCRConfig
 from .cluster_tokenizer import ClusterTokenizer
 from .preprocessor import ImagePreprocessor
+from .model.blockwise_decoder import BlockwiseParallelWrapper
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
@@ -22,12 +23,14 @@ class OCRPredictor:
         self.preprocessor = ImagePreprocessor(config)
 
         # Initialize Architecture
-        logger.info(f"Init Model: dim={self.cfg.emb_dim}, max_seq={self.cfg.max_seq_len}")
+        logger.info(f"Init Model: dim={self.cfg.emb_dim}, max_seq={self.cfg.max_seq_len}, decoder={self.cfg.decoder_type}")
         self.model = model_class(
             vocab_size=len(tokenizer),
             pad_idx=tokenizer.pad_idx,
             emb_dim=self.cfg.emb_dim,
-            max_global_len=self.cfg.max_seq_len
+            max_global_len=self.cfg.max_seq_len,
+            decoder_type=self.cfg.decoder_type,
+            block_size=self.cfg.block_size,
         )
 
         # Load Weights
@@ -77,10 +80,68 @@ class OCRPredictor:
             else:
                 memory = merged
 
-            if beam_width <= 1:
-                return self._greedy_decode(memory)
-            else:
-                return self._beam_search(memory, beam_width)
+            return self._decode(memory, beam_width)
+
+    def _decode(self, memory, beam_width):
+        if isinstance(self.model.dec, BlockwiseParallelWrapper):
+            # Blockwise decoding is a drop-in accelerated greedy decode (see
+            # BlockwiseParallelWrapper's docstring: p1 is always exactly the
+            # frozen base decoder's own prediction, so the result is provably
+            # identical to plain greedy AR). There's no beam-search variant.
+            return self._blockwise_decode(memory)
+        if beam_width <= 1:
+            return self._greedy_decode(memory)
+        return self._beam_search(memory, beam_width)
+
+    def _blockwise_decode(self, memory):
+        """Greedy decode with Stern et al. 2018 blockwise-parallel verification.
+
+        Each step proposes ``block_size`` tokens ahead from the current hidden
+        state, then verifies them in one forward pass through the frozen base
+        decoder (the same one plain greedy decoding would use): the proposal
+        is accepted token-by-token up to the first mismatch, and the base
+        decoder's own (always-correct) prediction at that point is appended
+        too, so at least one new token is produced every iteration -- exactly
+        like ordinary greedy decoding, just usually several tokens at a time.
+        """
+        wrapper: BlockwiseParallelWrapper = self.model.dec
+        base = wrapper.base
+        block_size = wrapper.block_size
+
+        B, T, _ = memory.shape
+        mask = torch.zeros((B, T), dtype=torch.bool, device=self.device)
+        generated = [self.tokenizer.sos_idx]
+
+        for _ in range(self.cfg.decode_max_len):
+            tgt = torch.LongTensor([generated]).to(self.device)
+            block_logits = wrapper(tgt, memory, mask)  # (1, len(generated), block_size, vocab)
+            proposals = torch.argmax(block_logits[0, -1], dim=-1).tolist()
+
+            candidate = generated + proposals
+            cand_tgt = torch.LongTensor([candidate]).to(self.device)
+            p1_logits = base(cand_tgt, memory, mask)  # (1, len(candidate), vocab) -- frozen p1 only
+
+            # t0 - 1 is the position whose prediction is proposals[0]; walk
+            # forward while the base decoder's own greedy choice agrees.
+            t0 = len(generated)
+            accept = 0
+            while accept < block_size and torch.argmax(p1_logits[0, t0 - 1 + accept]).item() == proposals[accept]:
+                accept += 1
+            # The base decoder's prediction at the point verification stopped
+            # is guaranteed correct (it's exactly what plain greedy would
+            # produce next), so it's always appended too.
+            next_forced = torch.argmax(p1_logits[0, t0 - 1 + accept]).item()
+
+            stop = False
+            for tok in proposals[:accept] + [next_forced]:
+                if tok == self.tokenizer.eos_idx:
+                    stop = True
+                    break
+                generated.append(tok)
+            if stop:
+                break
+
+        return self.tokenizer.decode(generated)
 
     def _greedy_decode(self, memory):
         B, T, _ = memory.shape
@@ -187,10 +248,7 @@ class OCRPredictor:
                     else:
                         memory = merged
 
-                    if beam_width <= 1:
-                        all_results.append(self._greedy_decode(memory))
-                    else:
-                        all_results.append(self._beam_search(memory, beam_width))
+                    all_results.append(self._decode(memory, beam_width))
             
             # Update progress bar by the number of images processed in this mini-batch
             pbar.update(len(mini_batch))

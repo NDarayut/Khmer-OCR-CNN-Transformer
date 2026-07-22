@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_sequence
 
+from .blockwise_decoder import BlockwiseParallelWrapper
+
 # ==========================================
 # Squeeze-and-Excitation Block (1D-SE)
 # ==========================================
@@ -179,7 +181,12 @@ class TransformerDecoderWrapper(nn.Module):
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
-    def forward(self, tgt_tokens, memory, memory_key_padding_mask):
+    def forward_hidden(self, tgt_tokens, memory, memory_key_padding_mask):
+        """Decoder stack output before the final vocab projection -- shape
+        (B, T, emb_dim). Exposed separately from ``forward()`` so
+        ``BlockwiseParallelWrapper`` can share this same hidden state between
+        the frozen p1 projection and its own auxiliary proposal heads.
+        """
         B, T = tgt_tokens.size()
         device = tgt_tokens.device
 
@@ -204,11 +211,15 @@ class TransformerDecoderWrapper(nn.Module):
             memory_key_padding_mask=memory_key_padding_mask
         )
 
-        logits = self.out_proj(dec_out.transpose(0,1))
-        return logits
+        return dec_out.transpose(0,1)
+
+    def forward(self, tgt_tokens, memory, memory_key_padding_mask):
+        hidden = self.forward_hidden(tgt_tokens, memory, memory_key_padding_mask)
+        return self.out_proj(hidden)
 
 class KhmerOCR(nn.Module):
-    def __init__(self, vocab_size, pad_idx=0, emb_dim=256, max_global_len=4096):
+    def __init__(self, vocab_size, pad_idx=0, emb_dim=256, max_global_len=4096,
+                 decoder_type="ar", block_size=4):
 
         super().__init__()
 
@@ -233,8 +244,13 @@ class KhmerOCR(nn.Module):
             bidirectional=True
         )
 
-        self.dec = TransformerDecoderWrapper(vocab_size, emb_dim=emb_dim, nhead=8,
+        base_dec = TransformerDecoderWrapper(vocab_size, emb_dim=emb_dim, nhead=8,
                                              num_layers=2, pad_idx=pad_idx)
+        if decoder_type == "blockwise":
+            self.dec = BlockwiseParallelWrapper(base_dec, block_size=block_size)
+        else:
+            self.dec = base_dec
+        self.decoder_type = decoder_type
         self.pad_idx = pad_idx
 
     def forward(self, chunk_lists, tgt_tokens):

@@ -170,12 +170,13 @@ pip install -v git+https://github.com/netra-ai-lab/Khmer-OCR-CNN-Transformer.git
 ```
 
 The default **YOLO** and **legacy** detectors work out of the box — the YOLO detector
-weights are bundled with the package (~20 MB). The default recognition weights
-(`khmerocr_cluster_ar.pth`, using a Khmer Character Cluster tokenizer) are downloaded
-automatically from the [model page](https://huggingface.co/Darayut/khmer-text-recognition)
-on first use and cached locally, so the installed package itself stays small. Other
-trained checkpoints listed there are not auto-downloaded; pass them explicitly via
-`--model` / `model_path` if you want to use them.
+weights are bundled with the package (~20 MB). The recognition weights (using a Khmer
+Character Cluster tokenizer) are downloaded automatically from the
+[model page](https://huggingface.co/Darayut/khmer-text-recognition) on first use and
+cached locally, so the installed package itself stays small. Two decoders are available,
+selected via `--decoder` / `decoder=` (see [Recognition Decoder](#recognition-decoder)
+below); other trained checkpoints listed on the model page are not auto-downloaded, pass
+them explicitly via `--model` / `model_path` if you want to use them.
 
 #### Optional extras
 ```bash
@@ -235,6 +236,9 @@ netra_ocr --image scan.jpg --output result.txt --detector yolo --conf 0.4
 # High-accuracy mode with Tesseract detector
 netra_ocr --image scan.jpg --output result.txt --detector tesseract --beam 5 --batch_size 16
 
+# Blockwise-parallel decoder — same output as the default, usually faster
+netra_ocr --image scan.jpg --output result.txt --decoder blockwise
+
 # Debug mode — saves per-line .txt and logo .png files to a debug_ folder
 netra_ocr --image scan.jpg --output result.txt --detector yolo --debug
 ```
@@ -245,8 +249,8 @@ Instantiate `KhmerOCRPipeline` once to keep models in memory for repeated calls.
 ```python
 from netra_ocr.ocr_engine import KhmerOCRPipeline
 
-# YOLO detector with custom confidence threshold
-pipeline = KhmerOCRPipeline(detector="yolo", conf=0.4)
+# YOLO detector with custom confidence threshold, blockwise-parallel decoder
+pipeline = KhmerOCRPipeline(detector="yolo", conf=0.4, decoder="blockwise")
 
 # Process an image — returns recognized text; also writes the output file
 result_text = pipeline.process_image(
@@ -259,6 +263,17 @@ result_text = pipeline.process_image(
 
 print(result_text)
 ```
+
+### Recognition Decoder
+Two interchangeable recognition decoders are available, selected via `--decoder` (CLI) or
+`decoder=` (`KhmerOCRPipeline`). Both are auto-downloaded from the
+[model page](https://huggingface.co/Darayut/khmer-text-recognition) and share the same
+vocabulary, so switching between them never changes the recognized text:
+
+| Decoder | Checkpoint | Notes |
+| :--- | :--- | :--- |
+| `ar` (default) | `khmerocr_cluster_ar.pth` | Plain autoregressive decoding, one token per step. |
+| `blockwise` | `khmerocr_cluster_blockwise.pth` | [Stern et al. 2018](https://arxiv.org/abs/1811.03115) blockwise-parallel decoding — proposes several tokens ahead each step and verifies them against the same frozen base decoder used by `ar`, so output is provably identical to greedy `ar` decoding, just usually faster. Only supports greedy decoding (`beam_width` is ignored). |
 
 ### 3. Web App (Browser UI)
 A Flask web interface ([`app.py`](app.py)) for uploading an image, picking a detector/output format, and viewing the recognized text with bounding-box overlays in the browser.
@@ -282,7 +297,8 @@ Upload a JPG/PNG/TIFF/BMP (max 20 MB), choose a detector (`tesseract`, `yolo`, o
 | `conf` | `float` | `0.25` | YOLO confidence threshold. Only applies when `detector="yolo"`. |
 | `pad` | `int` | `None` (auto) | Pixels added around each detected box. Applies to `yolo` and `legacy` detectors. |
 | `output_path` | `str` | `None` | Destination file. Extension selects format: `.txt`, `.md`, `.json`, `.docx`. |
-| `beam_width` | `int` | `1` | `1` = greedy search (fast). Higher values improve accuracy at the cost of speed. |
+| `decoder` | `str` | `ar` | Recognition decoder: `ar` (plain autoregressive) or `blockwise` (same output, usually faster — see [Recognition Decoder](#recognition-decoder)). |
+| `beam_width` | `int` | `1` | `1` = greedy search (fast). Higher values improve accuracy at the cost of speed. Ignored when `decoder="blockwise"`. |
 | `batch_size` | `int` | `8` | Number of text lines processed per recognition batch. |
 | `save_debug` | `bool` | `False` | Saves per-segment debug files (`.txt` for text, `.png` for logos) into a `debug_<name>/` folder. |
 

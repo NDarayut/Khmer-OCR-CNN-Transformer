@@ -55,6 +55,11 @@ netra_ocr = "netra_ocr.ocr_engine:main"
 
 [tool.setuptools.packages.find]
 include = ["netra_ocr*"]
+# Without this, setuptools treats any directory under netra_ocr* as an
+# implicit PEP 420 namespace package even without __init__.py, which would
+# pull netra_ocr/recognition/archive/ (intentionally not a package -- see
+# its own contents) into the wheel.
+namespaces = false
 
 [tool.setuptools]
 # Keep this false: with include-package-data the build would pull in EVERY git-tracked

@@ -33,7 +33,7 @@ from .output_formatters import save_output, SUPPORTED_FORMATS
 
 class KhmerOCRPipeline:
     def __init__(self, detector: str = "yolo", conf: float | None = None,
-                 pad: int | None = None):
+                 pad: int | None = None, decoder: str = "ar"):
         print(f"Initializing detector: {detector}")
         kwargs = {}
         if conf is not None:
@@ -41,6 +41,7 @@ class KhmerOCRPipeline:
         if pad is not None:
             kwargs["pad"] = pad
         self.detector = get_detector(detector, **kwargs)
+        self.decoder = decoder
 
     def process_image(
         self,
@@ -78,7 +79,7 @@ class KhmerOCRPipeline:
 
         # STEP 3: RECOGNITION (text only)
         ocr_queue = [dl.crop for dl in text_lines]
-        recognitions = recognize_batch(ocr_queue, beam_width=beam_width, batch_size=batch_size) \
+        recognitions = recognize_batch(ocr_queue, beam_width=beam_width, batch_size=batch_size, decoder=self.decoder) \
                        if ocr_queue else []
 
         # STEP 4: BUILD SEGMENTS (merged, sorted top-to-bottom)
@@ -154,13 +155,15 @@ def main():
                         help="YOLO confidence threshold (default 0.25). Only applies to --detector yolo.")
     parser.add_argument("--pad",        type=int, default=None,
                         help="Pixels to pad each bbox on all sides (default 4). Only applies to --detector yolo.")
+    parser.add_argument("--decoder",    default="ar", choices=["ar", "blockwise"],
+                        help="Recognition decoder: ar (default) or blockwise (Stern et al. 2018 -- same output, usually faster).")
     parser.add_argument("--beam",       type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--debug",      action="store_true")
     args = parser.parse_args()
 
     try:
-        pipeline = KhmerOCRPipeline(detector=args.detector, conf=args.conf, pad=args.pad)
+        pipeline = KhmerOCRPipeline(detector=args.detector, conf=args.conf, pad=args.pad, decoder=args.decoder)
         pipeline.process_image(
             image_path  = args.image,
             output_path = args.output,
