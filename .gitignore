@@ -79,6 +79,9 @@ Thumbs.db
 # Logs
 *.log
 
+# Hugging Face dataset cache
+.hf_cache/
+
 # dotenv
 .env.*
 
