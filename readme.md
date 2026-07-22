@@ -67,39 +67,38 @@ We generated **200,000 synthetic images** to ensure robustness against font vari
 To handle variable-length text lines without aggressive resizing, we employ a "Chunk-and-Merge" strategy:
 *   **Resize:** Input images are resized to a fixed height of 48 pixels while maintaining aspect ratio.
 *   **Chunking:** The image is split into overlapping chunks (Size: 48x100 px, Overlap: 16 px).
-*   **Independent Encoding:** Each chunk is processed independently by the Squeeze-and-Excitation Network and Transformer Encoder to allow for parallel batch processing.
 
 ### 2. Model Architecture: Squeeze-and-Excitation Transformer Network
 Our proposed architecture integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
 
 ![Model Architecture](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/ocr-architecture.png)
 
-1.  **Squeeze-and-Excitation Network (SE-VGG):**
-    *   A modified VGG backbone with **1D Squeeze-and-Excitation** blocks after convolutional layer **3**, **4**, and **5**.
-    *   Unlike standard SE, these blocks use **vertical pooling** to refine feature channels while strictly preserving the horizontal width (sequence information).
+<p><em>Figure 2: Overview of Netra-OCR architecture. The input image is first resized and chunked into fixed chunk of 48x100px with 16px overlaps between each chunk. Each chunk is processed by the Squeeze-and-Excitation network in parallel resulting in 512 feature maps of size 2x32px. Each feature maps are transformed into patch embedding with positional embedding. The Transformer encoder takes these embedding and output Vision Token. These token are merged, and processed by a Bidirectional LSTM layer before being concatenating and ultimately pass through the Transformer decoder which outputs each character cluster sequentially.</em></p>
 
-        ![SE Module](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/Sequence%20Attention%20CNN.png)
+#### Squeeze-and-Excitation Network
+
+[Explain Here]
+
+![SE Module](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/Sequence%20Attention%20CNN.png)
 
 
-2.  **Patch Module:**
-    *   Projects spatial features into a condensed **384-dimensional** embedding space.
-    *   Adds local positional encodings to preserve spatial order within chunks.
+#### Patch Module
 
-3.  **Transformer Encoder:**
-    *   Captures contextual relationships among visual tokens within each independent chunk.
+[Explain Here]
 
-4.  **Merging Module:**
-    *   Concatenates the encoded features from all chunks into a single unified sequence.
-    *   Adds **Global Positional Embeddings** to define the absolute position of tokens across the entire text line.
+#### Transformer Encoder
+[Explain Here]
 
-5.  **BiLSTM Context Smoother:**
-    *   A Bidirectional LSTM layer that processes the merged sequence.
-    *   **Purpose:** Bridges the "context gap" between independent chunks by smoothing boundary discontinuities, ensuring a seamless flow of information across the text line.
+#### Merging Module
+[Explain Here]
 
-        ![Context Smoothing Module](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/BiLSTM-Module.png)
+#### BiLSTM Context Smoother:**
+[Explain Here]
 
-6.  **Transformer Decoder:**
-    *   Generates the final Khmer character sequence using the globally smoothed context.
+![Context Smoothing Module](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/BiLSTM-Module.png)
+
+#### Transformer Decoder
+[Explain Here]
 
 ---
 
