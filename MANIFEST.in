@@ -2,10 +2,11 @@ include readme.md
 include LICENSE
 include requirements.txt
 
-# Bundled default model weights (kept in sync with package-data in pyproject.toml)
+# Bundled default detector weights (kept in sync with package-data in pyproject.toml).
+# The recognition weight is intentionally NOT bundled -- downloaded from the HF
+# model repo on first use instead (see recognize_text.py DEFAULT_MODEL_REPO).
 include netra_ocr/detectors/yolo26s_best/best.pt
 include netra_ocr/detectors/yolo26s_best/args.yaml
-include netra_ocr/recognition/weight/khmerocr_epoch570.pth
 recursive-include netra_ocr/recognition *.json
 
 # Never ship build artifacts or the other (large) checkpoints

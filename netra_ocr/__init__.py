@@ -4,7 +4,7 @@ A Squeeze-and-Excitation Transformer network for Khmer text-line recognition,
 paired with pluggable text detectors (YOLO, Tesseract, classic CV).
 """
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 from .ocr_engine import KhmerOCRPipeline
 

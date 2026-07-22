@@ -169,11 +169,13 @@ pip install netra-ocr
 pip install -v git+https://github.com/netra-ai-lab/Khmer-OCR-CNN-Transformer.git@master
 ```
 
-The default **YOLO** and **legacy** detectors and the recognition model work out of the
-box — the default SE-Transformer weights (`khmerocr_epoch570.pth`) and the YOLO detector
-weights are bundled with the package (~88 MB). Other trained checkpoints listed in the
-[model page](https://huggingface.co/Darayut/khmer-text-recognition) are not bundled; pass
-them explicitly via `--model` / `model_path` if you want to use them.
+The default **YOLO** and **legacy** detectors work out of the box — the YOLO detector
+weights are bundled with the package (~20 MB). The default recognition weights
+(`khmerocr_cluster_ar.pth`, using a Khmer Character Cluster tokenizer) are downloaded
+automatically from the [model page](https://huggingface.co/Darayut/khmer-text-recognition)
+on first use and cached locally, so the installed package itself stays small. Other
+trained checkpoints listed there are not auto-downloaded; pass them explicitly via
+`--model` / `model_path` if you want to use them.
 
 #### Optional extras
 ```bash

@@ -3,7 +3,7 @@ import os
 import sys
 from .config import OCRConfig
 from .utils import setup_logging, autodetect_config
-from .tokenizer import Tokenizer
+from .cluster_tokenizer import ClusterTokenizer
 from .predictor import OCRPredictor
 try:
     from .model.se_model import KhmerOCR as SE_KhmerOCR
@@ -19,21 +19,37 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 # ==============================================================================
 # GLOBAL SETTINGS & STATE
 # ==============================================================================
-# Define defaults here so you don't have to pass them every time
-DEFAULT_MODEL_PATH = os.path.join(CURRENT_DIR, "weight", "khmerocr_epoch570.pth")
-DEFAULT_VOCAB_PATH = os.path.join(CURRENT_DIR, "char2idx_new.json")
+# The default recognition weight is *not* bundled with the package (it's
+# ~77 MB) -- it's downloaded on first use from the HF model repo and cached
+# locally by huggingface_hub (~/.cache/huggingface by default), so `pip
+# install netra-ocr` stays small. Only the tiny vocab JSON is bundled, since
+# it's needed immediately with no network round-trip.
+DEFAULT_MODEL_REPO = "Darayut/khmer-text-recognition"
+DEFAULT_MODEL_FILENAME = "khmerocr_cluster_ar.pth"
+DEFAULT_VOCAB_PATH = os.path.join(CURRENT_DIR, "char2idx_cluster.json")
 
 # Global variable to hold the model in memory (Singleton)
 _PREDICTOR_INSTANCE = None
+
+
+def _default_model_path() -> str:
+    from huggingface_hub import hf_hub_download
+    return hf_hub_download(repo_id=DEFAULT_MODEL_REPO, filename=DEFAULT_MODEL_FILENAME)
+
 
 def _get_predictor(model_path=None, vocab_path=None):
     """
     Internal function to load the model only once.
     """
     global _PREDICTOR_INSTANCE
-    
-    # Use defaults if not provided
-    model_path = model_path or DEFAULT_MODEL_PATH
+
+    if _PREDICTOR_INSTANCE is not None:
+        return _PREDICTOR_INSTANCE
+
+    # Use defaults if not provided. Resolving the default model path may
+    # download it from the Hub, so this only runs once (guarded by the
+    # singleton check above).
+    model_path = model_path or _default_model_path()
     vocab_path = vocab_path or DEFAULT_VOCAB_PATH
 
     if "vgg" in model_path.lower():
@@ -42,13 +58,11 @@ def _get_predictor(model_path=None, vocab_path=None):
         model = ResNet_KhmerOCR
     else:
         model = SE_KhmerOCR
-        
-    if _PREDICTOR_INSTANCE is not None:
-        return _PREDICTOR_INSTANCE
+
     try:
         detected_cfg = autodetect_config(model_path)
         config = OCRConfig(**detected_cfg)
-        tokenizer = Tokenizer(vocab_path)
+        tokenizer = ClusterTokenizer(vocab_path)
 
         _PREDICTOR_INSTANCE = OCRPredictor(
             model_path=model_path,
@@ -108,7 +122,7 @@ def main():
     setup_logging()
     parser = argparse.ArgumentParser(description="Khmer OCR Inference Pipeline")
     parser.add_argument("--image", type=str, required=True, help="Path to input image")
-    parser.add_argument("--model", type=str, default=DEFAULT_MODEL_PATH, help="Path to .pth")
+    parser.add_argument("--model", type=str, default=None, help="Path to .pth (default: auto-download from the HF model repo)")
     parser.add_argument("--vocab", type=str, default=DEFAULT_VOCAB_PATH, help="Path to vocab json")
     parser.add_argument("--beam", type=int, default=3, help="Beam width (1 for greedy)")
     parser.add_argument("--output", type=str, help="Save result to text file")

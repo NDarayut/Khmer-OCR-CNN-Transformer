@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netra-ocr"
-version = "0.1.1"
+version = "0.2.0"
 description = "Khmer OCR engine using a Squeeze-and-Excitation Transformer network for text-line recognition, with pluggable text detectors (YOLO, Tesseract, classic CV)."
 readme = "readme.md"
 requires-python = ">=3.8"
@@ -35,6 +35,7 @@ dependencies = [
     "torchvision",
     "python-docx",
     "ultralytics",
+    "huggingface_hub>=0.20",
 ]
 
 [project.optional-dependencies]
@@ -61,9 +62,11 @@ include = ["netra_ocr*"]
 # below. Only the explicit package-data globs are shipped in the wheel.
 include-package-data = false
 
-# Only the default weights are bundled (~88 MB). Other trained checkpoints in the
-# repo are intentionally NOT shipped; point --model / model_path at them directly,
-# or download from the HuggingFace model page.
+# The YOLO detector weights are bundled (~20 MB) since they're small and needed
+# immediately. The recognition weight is NOT bundled -- it's ~77 MB, so it's
+# downloaded on first use from https://huggingface.co/Darayut/khmer-text-recognition
+# and cached locally by huggingface_hub instead. Only the (tiny) vocab JSON
+# files are bundled here.
 [tool.setuptools.package-data]
 "netra_ocr.detectors" = ["yolo26s_best/best.pt", "yolo26s_best/args.yaml"]
-"netra_ocr.recognition" = ["weight/khmerocr_epoch570.pth", "*.json"]
+"netra_ocr.recognition" = ["*.json"]
