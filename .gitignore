@@ -29,6 +29,8 @@ share/python-wheels/
 # Virtual environments
 .env
 .venv
+.venv-deepseek
+.venv-unsloth
 env/
 venv/
 ENV/
@@ -93,6 +95,7 @@ netra_ocr/recognition/TEST_SET_EVAL_RESULTS.md
 eval_out*/
 test_set/
 research/
+unsloth_compiled_cache/
 
 # Local dev environment / assistant notes
 .python-version
