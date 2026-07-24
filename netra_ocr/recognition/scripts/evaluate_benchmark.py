@@ -23,7 +23,6 @@ original 176-vocab AR base instead, pass:
 """
 
 import argparse
-import csv
 import logging
 import os
 import time
@@ -38,6 +37,7 @@ from ..cluster_tokenizer import ClusterTokenizer
 from ..postprocess import clean_text
 from ..predictor import OCRPredictor
 from ..utils import autodetect_config, setup_logging
+from .ocr_eval_common import levenshtein, load_local_dataset as _load_local_dataset, write_records
 
 logger = logging.getLogger(__name__)
 
@@ -67,23 +67,6 @@ def normalize(text: str) -> str:
     text = clean_text(text)
     text = khnormal(text)
     return text.strip()
-
-
-def levenshtein(a: list, b: list) -> int:
-    n, m = len(a), len(b)
-    if n == 0:
-        return m
-    if m == 0:
-        return n
-    prev = list(range(m + 1))
-    for i in range(1, n + 1):
-        curr = [i] + [0] * m
-        ai = a[i - 1]
-        for j in range(1, m + 1):
-            cost = 0 if ai == b[j - 1] else 1
-            curr[j] = min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
-        prev = curr
-    return prev[m]
 
 
 def pad_image(image, pad_px: int):
@@ -167,31 +150,13 @@ def evaluate(predictor: OCRPredictor, images, targets_raw, beam_width: int, labe
 
 
 def load_local_dataset(local_dir: Path):
-    """Loads an {images/, labels/}-directory benchmark: one image per file in
-    `images/`, ground truth in `labels/<same-stem>.txt`. Matched by filename
-    stem (not by sorted position) so the two directories don't need to be in
-    sync ordering-wise."""
-    images_dir = local_dir / "images"
-    labels_dir = local_dir / "labels"
-    images, targets = [], []
-    for img_path in sorted(images_dir.iterdir()):
-        if img_path.suffix.lower() not in (".png", ".jpg", ".jpeg", ".bmp"):
-            continue
-        label_path = labels_dir / (img_path.stem + ".txt")
-        if not label_path.exists():
-            logger.warning(f"No label for {img_path.name}, skipping")
-            continue
-        images.append(Image.open(img_path).convert("RGB"))
-        targets.append(label_path.read_text(encoding="utf-8").strip())
+    """Loads an {images/, labels/}-directory benchmark as PIL images (this
+    script's own callers expect images, not paths -- see ocr_eval_common's
+    version, shared with the other engines' scripts, for the path-based
+    variant used where lazy per-image loading matters more)."""
+    image_paths, targets = _load_local_dataset(local_dir)
+    images = [Image.open(p).convert("RGB") for p in image_paths]
     return images, targets
-
-
-def write_records(records, path: Path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["target_raw", "prediction_raw", "target_norm", "prediction_norm"])
-        writer.writeheader()
-        writer.writerows(records)
 
 
 def main():
