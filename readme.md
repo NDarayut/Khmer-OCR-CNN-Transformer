@@ -19,11 +19,11 @@
 </h2>
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/benchmark.png" style="width: 1000px" align=center>
+<img src="assets/benchmark.png" style="width: 1000px" align=center>
 </p>
 
 <p align="center">
-<a href="">Character Error Rate (CER %) on KHOB, Legal Documents, and Printed Word Benchmark</a>       
+<a href="">Character Error Rate (CER %) on KHOB, Legal Documents, and Printed Word Benchmark. <i>Lower is better.</i></a>       
 </p>
 
 ## 1. Abstract
@@ -103,11 +103,17 @@ A standard autoregressive Transformer decoder generates the output character-clu
 ## 4. Evaluation Result
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/netra-ai-lab/Netra-OCR/main/assets/benchmark.png" style="width: 1000px" align=center>
+<img src="assets/benchmark.png" style="width: 1000px" align=center>
 </p>
+<p><em>Figure 5: Character Error Rates (%) across all evaluation datasets, benchmarked against five models including Vision-Language Models (VLMs) such as Qwen2.5-VL (3B) and DeepSeek-OCR (3B). Qwen and Deepseek-OCR was finetuned on the same training set as Netra-OCR before evaluation using unsloth.</em></p>
 
+<p align="center">
+<img src="assets/eval_1.png" style="width: 1000px" align=center>
+<img src="assets/eval_2.png" style="width: 1000px" align=center>
+</p>
+<p><em>Figure 6: Recognized sample</em></p>
 
-## Setup
+## 5. Setup
 
 ### Create virtual environment
 ```bash
