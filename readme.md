@@ -26,32 +26,29 @@
 <a href="">Character Error Rate (CER %) on KHOB, Legal Documents, and Printed Word Benchmark</a>       
 </p>
 
-## Introduction
+## 1. Abstract
 
-This repository contains the implementation, datasets, and evaluation results for the **Squeeze-and-Excitation Transformer Network**, a high-performance Khmer Text Recognition model that utilizes a hybrid architecture combining **Squeeze-and-Excitation** blocks for feature extraction and **BiLSTM** smoothing for context smoothing, specifically designed to handle the complexity and length of Khmer script.
+This work presents **Netra-OCR**, a **17M**-parameter model designed to process variable-length text-line images with high accuracy and low latency. Trained from scratch on a dataset of **1.3M** bilingual (Khmer and English) text-line images, the model employs an encoder-decoder architecture. Specifically, the vision encoder integrates a Squeeze-and-Excitation (SE) network with a Transformer encoder to extract robust spatial features, while the decoder utilizes a standard Transformer architecture for autoregressive text generation. To accommodate the distinct orthographic structures of the two languages, we implement a hybrid tokenization strategy: English text is processed strictly at the character level, whereas Khmer text utilizes a mixture of character-level and character-cluster representations.
 
-## Overview
+## 2. Datasets
 
-Khmer script presents unique challenges for OCR due to its large character set, complex sub-consonant stacking, and variable text line lengths. This project proposes an enhanced pipeline that:
-1.  **Chunks** long text lines into manageable overlapping segments.
-2.  **Extracts Features** using a **Squeeze-and-Excitation Network** (SE-VGG) that preserves horizontal spatial information.
-3.  **Encodes** local spatial features using a Transformer Encoder.
-4.  **Merges** the encoded chunks into a unified sequence.
-5.  **Smooths Context** using a **BiLSTM** layer to resolve boundary discontinuities between chunks.
-6.  **Decodes** the final sequence using a Transformer Decoder.
+The model was trained entirely on synthetic data and evaluated on real-world and synthetic datasets.
 
-## Datasets
+### 2.1 Training Data (Synthetic)
 
-The model was trained entirely on synthetic data and evaluated on real-world datasets.
-### Training Data (Synthetic)
-We generated **200,000 synthetic images** to ensure robustness against font variations and background noise.
+To train the model, we utilized a combination of custom-generated synthetic data and publicly available external datasets. Specifically, we generated **200,000** synthetic text-line images encompassing **11** distinct typographical fonts. To further enhance the diversity, scale, and robustness of the training corpus, we integrated two external open-source datasets: [*SoyVitou/KhmerSynthetic1M*](https://huggingface.co/datasets/SoyVitou/KhmerSynthetic1M) and [*seanghay/khmer-hanuman-100k*](https://huggingface.co/datasets/seanghay/khmer-hanuman-100k).
 
-| Dataset Type | Count | Generator / Source | Augmentations |
+| Dataset | Count | Source / Generator | Augmentations |
 | :--- | :--- | :--- | :--- |
-| **Document Text** | 100,000 | Pillow + Khmer Corpus | Erosion, noise, thinning/thickening, perspective distortion. |
-| **Scene Text** | 100,000 | SynthTIGER + Stanford BG | Rotation, blur, noise, realistic backgrounds. |
+| **Custom Document Text** | 100,000 | Pillow + Khmer Corpus | Erosion, noise, thinning/thickening, perspective distortion. |
+| **Custom Scene Text** | 100,000 | SynthTIGER + Stanford BG | Rotation, blur, noise, realistic backgrounds. |
+| **KhmerSynthetic1M** | 1,000,000 | [SoyVitou](https://huggingface.co/datasets/SoyVitou/KhmerSynthetic1M) (External) | Pre-applied by source authors. |
+| **khmer-hanuman-100k** | 100,000 | [seanghay](https://huggingface.co/datasets/seanghay/khmer-hanuman-100k) (External) | Pre-applied by source authors. |
 
-### Evaluation Data (Real-World + Synthetic)
+### 2.2 Evaluation Data (Real-World + Synthetic)
+
+To evaluate the model, we utilized the publicly available [Khmer OCR Benchmark (KHOB) dataset](https://github.com/EKYCSolutions/khmer-ocr-benchmark-dataset) alongside a proprietary, custom-annotated dataset. This internal dataset consists of smartphone-captured images of official legal documents, including birth certificates, academic diplomas, and national identification cards, to test real-world applicability. Furthermore, because the primary training corpus predominantly featured mid-to-long text lines, we conducted an additional evaluation using synthetic printed words to explicitly assess the model's robustness in recognizing shorter text sequences.
+
 | Dataset | Type | Size | Description |
 | :--- | :--- | :--- | :--- |
 | **KHOB** | Real | 325 | Standard benchmark, clean backgrounds but compression artifacts. |
@@ -61,14 +58,14 @@ We generated **200,000 synthetic images** to ensure robustness against font vari
 ![Dataset Overview](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/dataset-overview.png)
 ---
 
-## Methodology & Architecture
+## 3. Methodology & Architecture
 
-### 1. Preprocessing: Chunking & Merging
+### 3.1 Preprocessing: Chunking & Merging
 To handle variable-length text lines without aggressive resizing, we employ a "Chunk-and-Merge" strategy:
 *   **Resize:** Input images are resized to a fixed height of 48 pixels while maintaining aspect ratio.
 *   **Chunking:** The image is split into overlapping chunks (Size: 48x100 px, Overlap: 16 px).
 
-### 2. Model Architecture: Squeeze-and-Excitation Transformer Network
+### 3.2 Model Architecture: Squeeze-and-Excitation Transformer Network
 Our proposed architecture (*see figure 2*) integrates sequence-aware attention and recurrent smoothing to overcome the limitations of standard chunk-based OCR. The model consists of six key modules:
 
 ![Model Architecture](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/ocr-architecture.png)
@@ -103,48 +100,11 @@ A standard autoregressive Transformer decoder generates the output character-clu
 
 ---
 
-## Training Configuration
+## 4. Evaluation Result
 
-*   **Epochs:** 100
-*   **Optimizer:** Adam
-*   **Loss Function:** Cross-Entropy Loss
-*   **Learning Rate Schedule:** Staged Cyclic
-    *   *Epoch 0-15:* Fixed 1e-4 (Rapid convergence)
-    *   *Epoch 16-30:* Cyclic 1e-4 to 1e-5 (Stability)
-    *   *Epoch 31-100:* Cyclic 1e-5 to 1e-6 (Fine-tuning)
-*   **Sampling:** 50,000 images randomly sampled/augmented per epoch.
-
----
-
-## Quantitative Analysis
-
-We benchmarked our **proposed model** against VGG-Transformer, ResNet-Transformer, and Tesseract-OCR.
-
-**Character Error Rate (CER %)** - *Lower is better*
-
-TABLE 1: Character Error Rate (CER in %) results on the KHOB, Legal Documents, and Printed Word
-
-| Model | KHOB | Legal Documents | Printed Word |
-| :--- | :--- | :--- | :--- |
-| Tesseract-OCR | 6.24 | 24.30 | 8.02 |
-| VGG-Transformer | 2.27 | 10.27 | 3.61 |
-| ResNet-Transformer | 2.98 | 11.57 | 2.80 |
-| **Proposed Model** | $\textcolor{yellow}{1.87}$ | $\textcolor{yellow}{9.13}$ | $\textcolor{yellow}{2.46}$ |
-
----
-
-## Qualitative Analysis
-
-TABLE 2: Failure cases on KHOB, Legal Document, and Printed Word dataset
-![failure cases](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/failure_cases.png)
-
-TABLE 3: Example of proposed, and baseline model compared with the ground truth. Errors in the predictions are highlighted in red
-![success cases](https://raw.githubusercontent.com/netra-ai-lab/Khmer-OCR-CNN-Transformer/master/assets/sucess_case.png)
-
-**Key Findings:**
-*   **The Proposed Model** achieves the highest accuracy on long, continuous text lines (KHOB), demonstrating that the **BiLSTM Context Smoother** effectively resolves the chunk boundary discontinuities that limit standard Transformer baselines.
-*   On degraded and complex legal documents, **the proposed model** demonstrates superior robustness, significantly outperforming all baselines. This attributes to the **Squeeze-and-Excitation blocks**, which filter background noise while preserving character-specific features.
-*   **The Proposed Model** still retains a slight advantage on short, isolated words even where global context is less critical, outperforming both ResNet and VGG Transformer baseline.
+<p align="center">
+<img src="https://raw.githubusercontent.com/netra-ai-lab/Netra-OCR/main/assets/benchmark.png" style="width: 1000px" align=center>
+</p>
 
 
 ## Setup
