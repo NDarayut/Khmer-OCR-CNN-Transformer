@@ -5,7 +5,14 @@ from .base import BaseTextDetector, DetectedLine
 
 class TesseractDetector(BaseTextDetector):
     def __init__(self):
-        from netra_ocr.engine import KhmerLineDetector
+        try:
+            from netra_ocr.engine import KhmerLineDetector
+        except ImportError as e:
+            raise ImportError(
+                "The Tesseract detector requires the 'tesseract' extra (and the "
+                "system Tesseract binary). Install it with: "
+                "pip install \"netra-ocr[tesseract]\""
+            ) from e
         print("Initializing KhmerLineDetector (Tesseract)...")
         self._detector = KhmerLineDetector()
 

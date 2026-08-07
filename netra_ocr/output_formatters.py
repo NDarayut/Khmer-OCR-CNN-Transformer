@@ -90,8 +90,14 @@ def _save_json(segments, output_path, image_path=None, image_size=None, **_):
 # ──────────────────────────────────────────────────────────────────────
 
 def _save_docx(segments, output_path, image_size=None, **_):
-    from docx import Document
-    from docx.shared import Inches
+    try:
+        from docx import Document
+        from docx.shared import Inches
+    except ImportError as e:
+        raise ImportError(
+            "Writing .docx output requires the 'docx' extra. Install it with: "
+            "pip install \"netra-ocr[docx]\""
+        ) from e
 
     doc = Document()
     page_width_in = 6.0                          # usable page width in inches

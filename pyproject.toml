@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netra-ocr"
-version = "0.2.0"
+version = "1.0.0"
 description = "Khmer OCR engine using a Squeeze-and-Excitation Transformer network for text-line recognition, with pluggable text detectors (YOLO, Tesseract, classic CV)."
 readme = "readme.md"
 requires-python = ">=3.8"
@@ -23,8 +23,12 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Image Recognition",
 ]
 
-# Core dependencies — the default YOLO detector, the classic-CV ("legacy")
-# detector, and the recognition model all work with just these.
+# Core dependencies — enough to use the recognizer standalone
+# (netra_ocr.recognition.recognize_text.recognize / recognize_batch) on your
+# own crops, plus the classic-CV ("legacy") detector, which is pure
+# cv2/numpy and needs nothing extra. The YOLO and Tesseract detectors pull in
+# additional deps -- see the "yolo" / "tesseract" extras below -- so a plain
+# `pip install netra-ocr` does not require them.
 dependencies = [
     "pillow>=10.2.0,<11.0.0",
     "numpy",
@@ -33,17 +37,24 @@ dependencies = [
     "transformers>=4.47.0,<5.0.0",
     "torch>=2.0",
     "torchvision",
-    "python-docx",
-    "ultralytics",
     "huggingface_hub>=0.20",
 ]
 
 [project.optional-dependencies]
+# The bundled YOLO detector backend (netra_ocr/detectors/yolo.py).
+yolo = ["ultralytics"]
 # The Tesseract detector backend (netra_ocr/engine.py) pulls in heavier deps and
 # also needs the system Tesseract binary installed separately.
 tesseract = ["pytesseract", "scipy", "scikit-image", "networkx"]
+# .docx output support (netra_ocr/output_formatters.py) -- only needed when
+# using the full KhmerOCRPipeline with a .docx output path; not required by
+# the recognizer or any detector on its own.
+docx = ["python-docx"]
 # The Flask browser UI (app.py).
 web = ["flask"]
+# Everything needed to run the full detector+recognizer pipeline
+# (KhmerOCRPipeline) with every detector and output format available.
+full = ["netra-ocr[yolo,tesseract,docx,web]"]
 
 [project.urls]
 Homepage = "https://github.com/netra-ai-lab/Khmer-OCR-CNN-Transformer"
@@ -55,6 +66,12 @@ netra_ocr = "netra_ocr.ocr_engine:main"
 
 [tool.setuptools.packages.find]
 include = ["netra_ocr*"]
+# netra_ocr.recognition.scripts is training/eval tooling (train.py,
+# evaluate_*.py, finetune_vlm_khmer.py, ...), several of which import deps
+# (datasets, unsloth, ...) that aren't declared anywhere for the published
+# package. Kept in git, excluded from the wheel -- production installs only
+# need the inference path (detectors + recognition/model + predictor).
+exclude = ["netra_ocr.recognition.scripts", "netra_ocr.recognition.scripts.*"]
 # Without this, setuptools treats any directory under netra_ocr* as an
 # implicit PEP 420 namespace package even without __init__.py, which would
 # pull netra_ocr/recognition/archive/ (intentionally not a package -- see

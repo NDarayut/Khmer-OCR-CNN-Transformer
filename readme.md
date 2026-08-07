@@ -135,47 +135,106 @@ pip install netra-ocr
 pip install -v git+https://github.com/netra-ai-lab/Khmer-OCR-CNN-Transformer.git@master
 ```
 
-The default **YOLO** and **legacy** detectors work out of the box — the YOLO detector
-weights are bundled with the package (~20 MB). The recognition weights (using a Khmer
-Character Cluster tokenizer) are downloaded automatically from the
+`pip install netra-ocr` on its own gives you the **recognizer** (works standalone on
+any text-line image/crop, from any source) plus the **legacy** detector (classic CV,
+pure OpenCV/NumPy, no extra deps). The recognition weights (using a Khmer Character
+Cluster tokenizer) are downloaded automatically from the
 [model page](https://huggingface.co/Darayut/khmer-text-recognition) on first use and
-cached locally, so the installed package itself stays small. Two decoders are available,
+cached locally, so the base install itself stays small. Two decoders are available,
 selected via `--decoder` / `decoder=` (see [Recognition Decoder](#recognition-decoder)
 below); other trained checkpoints listed on the model page are not auto-downloaded, pass
 them explicitly via `--model` / `model_path` if you want to use them.
 
+Everything else — the bundled **YOLO** detector, the **Tesseract** detector, `.docx`
+output, and the browser UI — is an opt-in extra, so you only install what you actually
+use. Whether you want the recognizer alone or the full detector+recognizer pipeline is
+your call; see [Recognizer-Only Usage](#recognizer-only-usage) vs
+[Full Pipeline Usage](#local-inference) below.
+
 #### Optional extras
 ```bash
+# YOLO detector backend (netra_ocr's own trained detector; weights are bundled either way)
+pip install "netra-ocr[yolo]"
+
 # Tesseract detector backend (also requires the system Tesseract binary)
 pip install "netra-ocr[tesseract]"
 
+# .docx output support, for KhmerOCRPipeline's output_path=*.docx
+pip install "netra-ocr[docx]"
+
 # Flask browser UI (app.py)
 pip install "netra-ocr[web]"
+
+# Everything above, for the full detector+recognizer pipeline with all detectors/formats
+pip install "netra-ocr[full]"
 ```
 
 ---
-## Inference Usage
-This pipeline performs Khmer OCR — it detects text lines (and optionally logos) in a document image and extracts the recognized text into your chosen output format.
+
+## Recognizer-Only Usage
+
+If you already have line crops from your own detector, layout engine, or manual
+cropping, you don't need `netra_ocr`'s detectors (or their extras) at all — the
+recognizer is a standalone component that takes an image (a file path or a PIL
+`Image`, already cropped to a single text line) and returns the recognized string.
+
+```python
+from netra_ocr.recognition import recognize, recognize_batch
+
+# A single crop -- path or PIL.Image both work
+text = recognize("line_crop.png", beam_width=3)
+
+# Many crops at once -- model stays loaded between calls
+texts = recognize_batch(my_line_crops, beam_width=1, batch_size=8)
+
+# Pick the decoder / a specific checkpoint if you don't want the defaults
+text = recognize("line_crop.png", decoder="blockwise")
+text = recognize("line_crop.png", model_path="weight/my_checkpoint.pth",
+                  vocab_path="my_vocab.json")
+```
+
+This works with crops from anything — your own YOLO/Tesseract/layout model, manual
+annotation, another OCR pipeline's line-segmentation step, etc. No `detector=` choice,
+no `ultralytics`/`pytesseract` install, and no `KhmerOCRPipeline` involved.
+
+CLI equivalent (single image, no detection step):
+```bash
+python -m netra_ocr.recognition.recognize_text --image line_crop.png --beam 3
+```
+
+If you *do* want detection but would rather bring your own model than use one of the
+bundled detectors, implement `netra_ocr.detectors.base.BaseTextDetector` (one method,
+`detect(image_path) -> list[DetectedLine]`) and feed its `DetectedLine.crop` values
+into `recognize_batch` directly — you don't need to register it in `DETECTOR_REGISTRY`
+or use `KhmerOCRPipeline` unless you want its output-formatting/CLI convenience too.
+
+---
+## Full Pipeline Usage
+This is the full `KhmerOCRPipeline` — it *detects* text lines (and optionally logos) in a
+document image using one of the bundled detectors below, then feeds each crop to the
+recognizer, and extracts the recognized text into your chosen output format. If you
+already have your own line crops or detector, skip this and see
+[Recognizer-Only Usage](#recognizer-only-usage) instead.
 
 ### Supported Output Formats
 The output format is selected automatically from the file extension:
 - **`.txt` / `.md`** — plain UTF-8 text, one line per detected text line.
-- **`.docx`** — Word document: text lines as paragraphs, detected logos embedded as inline images.
+- **`.docx`** — Word document: text lines as paragraphs, detected logos embedded as inline images. Requires the `docx` extra.
 - **`.json`** — structured metadata including image size and per-line text + bounding boxes, suitable for reconstructing the document layout later.
 
 ### Detectors
-| Detector | Description |
-| :--- | :--- |
-| `yolo` (default) | YOLOv26s trained on Khmer documents. Detects **class 0** (text lines) and **class 1** (logos). Logos are cropped and embedded in `.docx` output; other formats receive text only. Text boxes are refined after detection to horizontally cover the full text line (content-aware, on by default). |
-| `tesseract` | Tesseract + graph clustering. No external model required. |
-| `legacy` | Classic CV detector using MSER, gradient analysis, and multi-channel binarization. No GPU or Tesseract installation required. Accepts optional `pad` parameter. |
+| Detector | Requires | Description |
+| :--- | :--- | :--- |
+| `yolo` (default) | `pip install netra-ocr[yolo]` | YOLOv26s trained on Khmer documents. Detects **class 0** (text lines) and **class 1** (logos). Logos are cropped and embedded in `.docx` output; other formats receive text only. Text boxes are refined after detection to horizontally cover the full text line (content-aware, on by default). Weights are bundled in the package either way (~20 MB); only the `ultralytics` runtime is a separate install. |
+| `tesseract` | `pip install netra-ocr[tesseract]` + system Tesseract binary | Tesseract + graph clustering. No external model required. |
+| `legacy` | *(none — included in the base install)* | Classic CV detector using MSER, gradient analysis, and multi-channel binarization. No GPU or Tesseract installation required. Accepts optional `pad` parameter. |
 
 ### Recognition Post-Processing
 Raw decoder output is cleaned of common gibberish (control/replacement characters and runaway repeated characters, clusters, or tokens from decoder loops). Machine-readable zone (MRZ) lines on passports/ID cards are auto-detected and exempted, so legitimate repeated `<` filler (e.g. `IDKHM1011052875<<<<<<<<`) is preserved intact.
 
 ---
 
-## Local-Inference
+## Local-Inference (Full Pipeline)
 
 ### 1. Command Line Interface (CLI)
 ```bash

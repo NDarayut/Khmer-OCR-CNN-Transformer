@@ -12,7 +12,13 @@ _WEIGHTS_PATH = os.path.join(
 class YoloDetector(BaseTextDetector):
     def __init__(self, weights: str = _WEIGHTS_PATH, conf: float = 0.25, iou: float = 0.7,
                  pad: int = 2, refine: bool = True, gap_ratio: float = 0.8):
-        from ultralytics import YOLO
+        try:
+            from ultralytics import YOLO
+        except ImportError as e:
+            raise ImportError(
+                "The YOLO detector requires the 'yolo' extra. Install it with: "
+                "pip install \"netra-ocr[yolo]\""
+            ) from e
         print(f"Loading YOLO weights: {weights}")
         self._model = YOLO(weights)
         self._conf = conf
